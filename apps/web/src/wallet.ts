@@ -5,7 +5,6 @@ import "@near-wallet-selector/modal-ui/styles.css";
 import { setupMyNearWallet } from "@near-wallet-selector/my-near-wallet";
 import { setupMeteorWallet } from "@near-wallet-selector/meteor-wallet";
 import { setupHereWallet } from "@near-wallet-selector/here-wallet";
-import { setupIntearWallet } from "@near-wallet-selector/intear-wallet";
 import type { OwnerIntent, WalletTx } from "./api";
 
 (globalThis as { Buffer?: typeof Buffer }).Buffer ??= Buffer;
@@ -22,7 +21,7 @@ export async function initWallet(network: "testnet" | "mainnet") {
   if (selector) return selector;
   selector = await setupWalletSelector({
     network,
-    modules: [setupMeteorWallet(), setupMyNearWallet(), setupHereWallet(), setupIntearWallet()],
+    modules: [setupMeteorWallet(), setupMyNearWallet(), setupHereWallet()],
   });
   modal = setupModal(selector, { contractId: "" });
   return selector;

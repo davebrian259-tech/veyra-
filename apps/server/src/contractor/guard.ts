@@ -59,11 +59,15 @@ export class ContractorGuard {
     const reasons: string[] = [];
     let s = 50;
     if (agent) {
-      const sr = agent.success_rate ?? 0;
       const n = agent.delivered_jobs ?? 0;
-      s = 30 + sr * 40 + Math.min(20, Math.log10(1 + n) * 8);
-      if (n < 10) { s -= 15; reasons.push(`only ${n} delivered jobs`); }
-      if (sr < 0.8) { s -= (0.8 - sr) * 50; reasons.push(`success rate ${(sr * 100).toFixed(0)}%`); }
+      // The live market reports success_rate as a percentage; with no deliveries it means "no data", not 0%.
+      let sr: number | null = agent.success_rate ?? null;
+      if (sr !== null && sr > 1) sr /= 100;
+      if (n === 0) sr = null;
+      s = 30 + (sr ?? 0.6) * 40 + Math.min(20, Math.log10(1 + n) * 8);
+      if (n === 0) { s -= 15; reasons.push("no delivery history yet"); }
+      else if (n < 10) { s -= 15; reasons.push(`only ${n} delivered jobs`); }
+      if (sr !== null && sr < 0.8) { s -= (0.8 - sr) * 50; reasons.push(`success rate ${(sr * 100).toFixed(0)}%`); }
       const ageDays = agent.created_at ? (Date.now() - Date.parse(agent.created_at)) / 86_400_000 : null;
       if (ageDays !== null && ageDays < 14) { s -= 10; reasons.push(`listed ${Math.floor(ageDays)} days ago`); }
       const v = agent.builder?.verification as unknown;

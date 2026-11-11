@@ -14,6 +14,7 @@ import type { Notifier } from "../services/notifications.js";
 import type { Treasury } from "../treasury/treasury.js";
 import { ContractorBrain, type Subtask, type Verification } from "./brain.js";
 import { ContractorGuard, taintCheck } from "./guard.js";
+import { rank } from "./rank.js";
 import type { ReceiptService } from "./receipts.js";
 
 /**
@@ -303,8 +304,8 @@ export class ContractorEngine {
       }
       ranked.push({ agent: a, plan: planAtomic, score, reasons });
     }
-    // Best value: trust first, then price. Cheap but untrusted agents fall to the bottom.
-    ranked.sort((x, y) => y.score - x.score + (Number(x.plan ?? 0n) - Number(y.plan ?? 0n)) / 2e5);
+    // Best value: trust, then relevance of the listing to the work, then price.
+    ranked.splice(0, ranked.length, ...rank(ranked, search.text, search.category, cap));
     // Attack lab: put the scenario's adversary first, as if it had out-ranked everyone else.
     const prefer = this.d.db.get<{ value_json: string }>("SELECT value_json FROM kv WHERE key = ?", [`lab.prefer.${c.id}`]);
     if (prefer) {

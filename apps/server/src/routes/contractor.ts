@@ -69,6 +69,23 @@ export function contractorRoutes(app: FastifyInstance, ctx: AppContext, schedule
     return ctx.treasury.status();
   });
 
+  /** The vault policy Veyra needs: USDC withdrawals to its own spend account only, under a budget. */
+  app.get("/vault/recommended-policy", async (req) => {
+    requireUser(ctx, req);
+    const { describePolicy, veyraPolicySchema } = await import("../services/policy.js");
+    const policy = veyraPolicySchema.parse({
+      actions: ["withdraw"],
+      assets: [`nep141:${ctx.config.USDC_CONTRACT}`],
+      budget: { dailyUsd: 25, weeklyUsd: 100 },
+      perTransactionUsd: ctx.config.MAX_FLOAT_USDC,
+      approvalThresholdUsd: null,
+      destinationMode: "only",
+      destinations: [{ action: "withdraw", chain: "near", address: ctx.spend.accountId, memo: null, label: "Veyra spend account" }],
+      maxActionsPerHour: 30,
+    });
+    return { policy, summary: describePolicy(policy), spendAccountId: ctx.spend.accountId };
+  });
+
   app.post("/treasury/spend/pool", async (req) => {
     requireUser(ctx, req);
     return ctx.spend.ensurePool();

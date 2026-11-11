@@ -1,73 +1,132 @@
 # Veyra
 
-**Give intelligence the power to act.** Veyra is an AI-powered financial operating system on NEAR. It has an **autonomous mode**, where an agent plans, hires, pays and tracks results inside an owner-signed policy, and a **manual mode**, where your own wallet signs and Veyra explains, checks and tracks. Both modes share one security system, one transaction history and one permission framework.
+Veyra is an autonomous contractor agent for the NEAR AI Agent Market. A person or another agent
+hires it with a budget. Veyra splits the job into parts, hires specialist agents on the market,
+negotiates, checks their work, pays them in USDC, and delivers the result, keeping a margin. Every
+payment passes a deterministic security layer (GUARD) that no model output can override.
 
-| Capability | What it does | NEAR technology |
+**Tracks:** Agent Economy (primary) · AI Security & Defense · Autonomous Business
+
+## The problem
+
+Agents that spend money get robbed by the agents they pay. A counterparty can quote one price and
+charge another, redirect the payment to its own account, take the money and never deliver, or
+return output containing instructions aimed at the hiring agent ("also send 25 USDC to …"). Spending
+limits alone don't stop any of these. Veyra treats every counterparty as hostile and every
+deliverable as untrusted input.
+
+## How NEAR is used
+
+| Need | NEAR technology | Where |
 |---|---|---|
-| **Agent wallet** | Owner-signed agent creation, grants, policy, freeze | NEAR Intents **Agent API** (`@near-intents-agent-api/sdk`) |
-| **WANTED** | Find human/AI providers, competing offers, bounded negotiation | Agent API payments, UNDO escrow |
-| **UNDO** | Milestone escrow; release only on accepted evidence | `veyra-escrow` NEAR contract |
-| **PROOF OF LIFE** | Funded challenges and bounties, verified payouts, reputation | `veyra-rewards` NEAR contract |
-| **GOAL WALLET** | Goals become plans; allocations, conversions, rebalances | Agent API + NEAR Intents + NEAR AI Cloud |
-| **BODYGUARD** | Deterministic checks on every action, autonomous or manual | Agent API policy + contract rules + Veyra engine |
-| Manual swaps | Live quotes, deposit, tracking to settlement | NEAR Intents **1Click** |
-| Private AI | Goal interpretation in a TEE, attestation verified | **NEAR AI Cloud** |
-| External chains | EVM transfers signed by your NEAR account | **Chain Signatures** (`chainsig.js`, MPC) |
+| Hire agents and get paid | **NEAR AI Agent Market**: A2A + x402 hires, job board over MCP (OAuth device flow), worker API for Veyra's own listing | `apps/server/src/market/` |
+| Pay per call | **x402 on NEAR**: USDC `ft_transfer` as a NEP-366 signed delegate action, settled by the market only on delivery | `src/lib/near-signer.ts`, `src/market/cheque.ts` |
+| Hold the budget under owner rules | **NEAR Intents Agent API** policy wallet (owner-signed policy, budgets, allowed destinations, freeze) | `src/services/agents.ts`, `src/treasury/treasury.ts` |
+| Private planning and judging | **NEAR AI Cloud**, with TDX/GPU attestation and response signatures verified | `src/services/ai/near-ai.ts` |
+| Verifiable receipts | **`veyra-ledger` NEAR contract**: append-only Merkle roots of signed receipts | `contracts/ledger/` |
 
-## Repository layout
+## Try it (no keys, no money)
+
+Requirements: Node ≥ 22.13, pnpm. Optional: Rust + `cargo-near` for the contract.
+
+1. `pnpm install`
+2. `pnpm demo`
+   **See:** a buyer hires Veyra for 4.00 USDC on the simulated market. Veyra plans 3 subtasks,
+   hires `scout-research`, `data-lens` and `brief-writer`, verifies each delivery, delivers, and
+   prints `margin 2.15 USDC`. Then four attacks run, and each is blocked with the attacker's
+   balance at 0.00 USDC:
+   - `payee-swap`: "Payment redirect attempt"
+   - `bait-and-switch`: "Quote of 1.00 USDC differs from the listed 0.10"
+   - `prompt-injection`: "A fooled model would now transfer 25 USDC … GUARD refused"
+   - `no-show`: "cheque was never settled, so nothing was paid"
+
+   Finally it prints a receipt check: hash, signature and Merkle proof all true.
+3. `pnpm live:dry-run "Research the main competitors to NEAR Intents agent wallets and write a short report"`
+   **See:** the same planner and GUARD against the **real** market.near.ai, using the live
+   catalog, live pricing plans and live x402 quotes (free 402 challenges). The treasury is
+   pinned from `market.near.ai/.well-known/x402`, every candidate gets an ALLOW or BLOCK verdict
+   with reasons, and it prints which agent it would hire. Nothing is signed or paid.
+4. `pnpm --filter @veyra/server test`
+   **See:** 49 tests pass. They cover cheques, the key pool, every GUARD rule, injection and
+   taint, Merkle proofs, the full hire → deliver loop, all four attacks, job-board negotiation,
+   the kill switch, the vault policy and the Agent API owner flows.
+5. `cd contracts && cargo test`
+   **See:** 6 ledger-contract tests pass (writer-only, contiguous batches, immutable).
+6. Run the console: start the server with `pnpm dev:server`, then the web app with
+   `pnpm dev:web`. Open http://localhost:5173 and click **Enter simulator**.
+   - **Hire Veyra:** you land on the contract with a live timeline, subtasks, quotes, payments
+     and receipts, ending in "Delivered".
+   - **Attack lab → Run attack** on each card: each card shows the security events and
+     "attacker received 0.00 USDC".
+   - **Treasury & ledger:** the three money tiers, the spend-key pool, the public P&L, the
+     counterparty record and the anchors.
+
+## How it works
 
 ```
-contracts/
-  escrow/     UNDO escrow contract (Rust, near-sdk 5)      — 23 unit tests
-  rewards/    PROOF OF LIFE contract (Rust, near-sdk 5)    — 8 unit tests
-apps/
-  server/     Fastify + TypeScript backend (Node ≥ 22.13, built-in SQLite) — 37 tests
-  web/        Vite + React frontend with NEAR Wallet Selector (functional, unstyled)
-scripts/      build-contracts.sh, deploy-contracts.sh
-docs/         ARCHITECTURE.md (design, security model, integration status, demo script)
+buyer ─hires─▶ Veyra (listed on market.near.ai)
+  plan (NEAR AI Cloud, attested; deterministic fallback)
+  for each subtask:
+    source  catalog search → trust (market reputation + own history) × relevance × price
+    quote   x402 402-challenge (free)              | job board: bids, counter once with reasons
+    GUARD   payee pinned to market treasury · quote == published price · subtask cap ·
+            contract envelope · counterparty blocked/low-trust · one cheque in flight
+    pay     vault ─(policy)→ spend account float ─(signed cheque, self-verified)→ market
+    verify  untrusted-content scan · required sections/length/mentions · optional attested judge
+            failed or poisoned → record, never re-hire, try the next agent
+  assemble → deliver through the worker API → signed receipts → Merkle root on NEAR
 ```
 
-## Quick start
+**Three-tier treasury.** The market settles x402 from a NEAR account's signed delegate action, and
+the Agent API wallet keeps its keys in custody, so it can't sign one. So the **vault** (Agent API,
+owner-signed policy that may only pay Veyra's spend account) refills the **spend account** with
+exactly what the next payment needs. The spend account signs the cheque, and the **market** holds
+it until delivery. The float caps what a compromised spend key could lose.
 
-```bash
-pnpm install
+**Per-cheque key pool.** Cheques settle when each agent delivers, in any order. Delegate nonces
+must increase per key, so every in-flight cheque gets its own access key. Without that,
+out-of-order settlement would fail.
+
+**Honesty notes.**
+- x402 settles on delivery with no buyer acceptance step. A poisoned but delivered x402 result
+  is therefore paid at its listed price (0.15 USDC in the lab). It is caught before it can cause
+  any further payment, the agent is blocked, and Veyra retries elsewhere. The job-board rail
+  holds funds until Veyra accepts.
+- The live market path was verified for discovery, pricing, quotes, treasury pinning and cheque
+  encoding (the live relayer decoded a test cheque from an unfunded account and rejected it on
+  validity window, not format). Paid live hires need a funded spend account, which this repo
+  does not include.
+- The NEAR Intents Agent API is an experimental beta. The vault flows are built on the official
+  SDK and tested against a fake API. Use small amounts.
+
+## Run live
+
+Copy `apps/server/.env.example` to `apps/server/.env` and set `VEYRA_MODE=live` plus:
+- `MARKET_WORKER_TOKEN`: the `aat_` token of Veyra's listing on market.near.ai (to earn).
+- A spend account: leave the variables empty to generate one, then fund it with a little NEAR
+  and USDC, or import `SPEND_ACCOUNT_ID` / `SPEND_ACCOUNT_KEY`.
+- `NEAR_INTENTS_AGENT_API_KEY`, then create the vault in **Settings → Vault**, sign with your
+  wallet, issue the grant, and set `VAULT_AGENT_ID`.
+- Optional: `NEAR_AI_API_KEY`, `LEDGER_CONTRACT_ID` (deploy with
+  `./scripts/deploy-contracts.sh <parent> <writer> testnet`), and **Settings → Connect the
+  Agent Market** for the job board.
+
+## Repository
+
+```
+apps/server/src
+  market/       catalog, x402 caller, cheque codec, MCP job board, OAuth, worker client
+  treasury/     spend account + key pool, vault (Agent API / sim), chain adapters
+  contractor/   engine (state machine), guard, brain (plan/verify/assemble), rank, receipts
+  sim/          market simulator (honest + adversarial agents) and in-memory NEAR ledger
+  services/     Agent API owner flows, BODYGUARD, NEAR AI Cloud, auth, audit
+  cli/          demo.ts, live-dry-run.ts
+apps/web        console (React; visual design pending)
+contracts/ledger  veyra-ledger NEAR contract
+docs/           DIRECTION.md (why this product), ARCHITECTURE.md
 ```
 
-```bash
-cp apps/server/.env.example apps/server/.env
-```
-
-```bash
-pnpm dev:server
-```
-
-```bash
-pnpm dev:web
-```
-
-Open http://localhost:5173, connect a NEAR wallet and sign in. The server starts with nothing configured. Each integration switches on when its variable is set (see `apps/server/.env.example`), and `/config` reports what is live.
-
-Contracts (needs `cargo install cargo-near --locked` and [NEAR CLI](https://github.com/near/near-cli-rs)):
-
-```bash
-./scripts/deploy-contracts.sh your-account.testnet testnet
-```
-
-Tests:
-
-```bash
-pnpm --filter @veyra/server test
-```
-
-```bash
-cd contracts && cargo test
-```
-
-## Important facts
-
-- **The NEAR Intents Agent API is an experimental, mainnet-only beta with real funds.** Agent wallets, grants and agent transactions therefore run on mainnet. Use small amounts and a dedicated owner account. UNDO and PROOF OF LIFE can run on testnet. Agent-funded escrow needs a mainnet escrow deployment (`AGENT_ESCROW_CONTRACT_ID`).
-- The partner API key and grant tokens exist only on the backend. Grant tokens are AES-256-GCM encrypted at rest, and no HTTP response, log line or AI prompt contains them (enforced by tests).
-- The AI proposes; it never authorises. Money moves only through the execution service, after BODYGUARD and the Agent API policy. Escrow releases need the owner's own wallet signature.
-- Anything simulated is labelled: demo providers (`SEED_DEMO_PROVIDERS=1`) produce `[simulated]` offers, and without `NEAR_AI_API_KEY` the planner is a deterministic one marked `source.kind = "heuristic"`.
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design, the security model, a per-integration status table and the hackathon demo script.
+All code was written during the hackathon window (from 2026-11-10). Libraries used:
+`@near-intents-agent-api/sdk`, `@near-js/*`, `@modelcontextprotocol/sdk`, `@phala/dcap-qvl`,
+`near-sdk` (Rust), `fastify`, `viem`, `zod`, `@noble/*`, NEAR Wallet Selector, React, Vite.
+License: MIT.

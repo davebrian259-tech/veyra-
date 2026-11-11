@@ -1,13 +1,15 @@
 {
   "name": "veyra",
   "private": true,
-  "description": "Veyra \u2014 AI-powered autonomous financial operating system on NEAR",
+  "description": "Veyra \u2014 an autonomous contractor that earns, hires and pays on the NEAR AI Agent Market",
   "license": "MIT",
   "packageManager": "pnpm@10.0.0",
   "engines": {
     "node": ">=22.13"
   },
   "scripts": {
+    "demo": "pnpm --filter @veyra/server demo",
+    "live:dry-run": "pnpm --filter @veyra/server live:dry-run",
     "dev:server": "pnpm --filter @veyra/server dev",
     "dev:web": "pnpm --filter @veyra/web dev",
     "build": "pnpm -r build",

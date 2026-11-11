@@ -8,7 +8,9 @@
     "start": "node --env-file-if-exists=.env dist/index.js",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "demo": "tsx src/cli/demo.ts",
+    "live:dry-run": "tsx --env-file-if-exists=.env src/cli/live-dry-run.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",

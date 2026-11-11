@@ -40,16 +40,3 @@ export async function sha256Hex(data: ArrayBuffer | string) {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-
-export function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).split(",")[1] ?? "");
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(file);
-  });
-}
-
-export async function uploadEvidence(file: File) {
-  return post<{ evidenceHash: string; uri: string }>("/evidence", { filename: file.name, mime: file.type || "application/octet-stream", dataBase64: await fileToBase64(file) });
-}

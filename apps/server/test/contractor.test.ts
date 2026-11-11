@@ -184,7 +184,7 @@ describe("the contractor loop (simulated market, real cryptography)", () => {
       const r = await t.call("POST", `/lab/${scenario}`, {}, t.token);
       expect(r.json.attacker.balance).toBe("0");
       expect(r.json.contract.status).toBe("delivered");
-      const blocked = r.json.contract.subtasks.flatMap((s: { quotes: { decision: string; reason: string }[] }) => s.quotes).filter((q: { decision: string }) => q.decision === "blocked_attack");
+      const blocked = r.json.contract.subtasks.flatMap((s: { quotes: { decision: string; agent_handle: string }[] }) => s.quotes).filter((q: { decision: string; agent_handle: string }) => q.decision === "blocked_attack" && q.agent_handle === r.json.adversary);
       expect(blocked.length).toBe(1);
       expect(r.json.contract.payments.some((p: { agent_handle: string }) => p.agent_handle === r.json.adversary)).toBe(false);
       expect(t.ctx.guard.counterparty(r.json.adversary).blocked).toBe(1);

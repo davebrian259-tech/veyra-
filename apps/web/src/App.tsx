@@ -1,88 +1,83 @@
 import { useEffect, useState } from "react";
 import { api, post } from "./api";
 import { login } from "./flows";
-import { ActivityPage } from "./pages/ActivityPage";
-import { AgentPage } from "./pages/AgentPage";
-import { AutonomousPage } from "./pages/AutonomousPage";
-import { ChainSigPage } from "./pages/ChainSigPage";
-import { EscrowPage } from "./pages/EscrowPage";
-import { PolPage } from "./pages/PolPage";
-import { SecurityPage } from "./pages/SecurityPage";
-import { WalletPage } from "./pages/WalletPage";
-import { WantedPage } from "./pages/WantedPage";
-import { Json } from "./ui";
+import { ContractPage } from "./pages/ContractPage";
+import { LabPage } from "./pages/LabPage";
+import { MarketPage } from "./pages/MarketPage";
+import { MoneyPage } from "./pages/MoneyPage";
+import { Overview } from "./pages/Overview";
+import { SettingsPage } from "./pages/SettingsPage";
 import { connectedAccount, disconnect, initWallet, onAccountChange, showWalletModal } from "./wallet";
 
-const TABS = {
-  autonomous: { label: "Autonomous", el: <AutonomousPage /> },
-  agent: { label: "Agent wallet", el: <AgentPage /> },
-  wallet: { label: "Manual wallet", el: <WalletPage /> },
-  wanted: { label: "WANTED", el: <WantedPage /> },
-  undo: { label: "UNDO", el: <EscrowPage /> },
-  bodyguard: { label: "BODYGUARD", el: <SecurityPage /> },
-  pol: { label: "PROOF OF LIFE", el: <PolPage /> },
-  chainsig: { label: "Chain Signatures", el: <ChainSigPage /> },
-  activity: { label: "Activity", el: <ActivityPage /> },
-} as const;
+type Tab = "overview" | "lab" | "market" | "money" | "settings";
 
 export function App() {
   const [config, setConfig] = useState<any>(null);
   const [wallet, setWallet] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
-  const [tab, setTab] = useState<keyof typeof TABS>("autonomous");
+  const [tab, setTab] = useState<Tab>("overview");
+  const [contract, setContract] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
       const c = await api("/config");
       setConfig(c);
-      await initWallet(c.nearNetwork);
-      setWallet(connectedAccount());
-      onAccountChange(setWallet);
       setUser((await api("/auth/me").catch(() => null))?.user ?? null);
+      if (c.mode === "live") {
+        await initWallet(c.nearNetwork);
+        setWallet(connectedAccount());
+        onAccountChange(setWallet);
+      }
     })().catch((e) => setError(String(e)));
   }, []);
 
   const signIn = async () => {
     setError(null);
     try {
-      const r = await login();
+      const r = config.mode === "sim" ? await post("/sim/session") : await login();
       setUser(r.user);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
 
+  const tabs: [Tab, string][] = [["overview", "Business"], ...(config?.mode === "sim" ? ([["lab", "Attack lab"]] as [Tab, string][]) : []), ["market", "Market"], ["money", "Treasury & ledger"], ["settings", "Settings"]];
+  const go = (t: Tab) => { setTab(t); setContract(null); };
+
   return (
     <div className="app">
       <header>
-        <h1>Veyra <small>Give intelligence the power to act.</small></h1>
+        <div>
+          <h1>Veyra</h1>
+          <p className="tagline">An autonomous contractor on the NEAR AI Agent Market — it earns, hires, pays, and can't be robbed while doing it.</p>
+        </div>
         <div className="row">
-          {config && <span className="pill">NEAR {config.nearNetwork}{config.nearNetwork === "testnet" ? " (testnet — no real value)" : ""}</span>}
-          {wallet ? <span className="pill">Wallet: {wallet}</span> : <button onClick={showWalletModal}>Connect wallet</button>}
-          {wallet && !user && <button onClick={signIn}>Sign in (NEP-413)</button>}
-          {user && <span className="pill">Signed in: {user.accountId}</span>}
-          {wallet && <button onClick={async () => { await post("/auth/logout"); await disconnect(); setUser(null); }}>Sign out</button>}
+          {config && <span className={`pill ${config.mode === "sim" ? "warn" : "good"}`}>{config.mode === "sim" ? "SIMULATOR · play money" : "LIVE · mainnet"}</span>}
+          {config?.mode === "live" && (wallet ? <span className="pill">{wallet}</span> : <button onClick={showWalletModal}>Connect wallet</button>)}
+          {!user && config && (config.mode === "sim" || wallet) && <button className="primary" onClick={signIn}>{config.mode === "sim" ? "Enter simulator" : "Sign in (NEP-413)"}</button>}
+          {user && <span className="pill">{user.accountId}</span>}
+          {user && <button onClick={async () => { await post("/auth/logout"); if (config.mode === "live") await disconnect(); setUser(null); }}>Sign out</button>}
         </div>
       </header>
       {error && <pre className="error">{error}</pre>}
-      {config && (
-        <details className="integrations">
-          <summary>Integration status (mocked or unconfigured parts are labelled)</summary>
-          <Json value={config.integrations} />
-        </details>
-      )}
       {user ? (
         <>
-          <nav>
-            {Object.entries(TABS).map(([k, t]) => (
-              <button key={k} className={k === tab ? "active" : undefined} onClick={() => setTab(k as keyof typeof TABS)}>{t.label}</button>
-            ))}
-          </nav>
-          <main>{TABS[tab].el}</main>
+          <nav>{tabs.map(([k, label]) => <button key={k} className={k === tab && !contract ? "active" : undefined} onClick={() => go(k)}>{label}</button>)}</nav>
+          <main>
+            {contract ? <ContractPage id={contract} back={() => setContract(null)} /> : (
+              <>
+                {tab === "overview" && <Overview mode={config.mode} open={setContract} />}
+                {tab === "lab" && <LabPage open={setContract} />}
+                {tab === "market" && <MarketPage mode={config.mode} />}
+                {tab === "money" && <MoneyPage mode={config.mode} />}
+                {tab === "settings" && <SettingsPage mode={config.mode} config={config} />}
+              </>
+            )}
+          </main>
         </>
       ) : (
-        <p className="note">Connect a NEAR wallet and sign in. Veyra never receives your keys.</p>
+        <p className="note">{config?.mode === "sim" ? "Enter the simulator to run the economy offline — no wallet or keys needed." : "Connect your NEAR wallet and sign in. Veyra never receives your keys."}</p>
       )}
     </div>
   );
