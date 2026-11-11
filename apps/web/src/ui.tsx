@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { ApiError } from "./api";
 
-/** Deliberately plain building blocks — visual design comes later. */
+/** Shared building blocks; the look lives in styles.css. */
 
 export function Section({ title, children, note }: { title: string; children: ReactNode; note?: string }) {
   return (
@@ -51,14 +51,14 @@ export function Field({ label, value, onChange, placeholder, textarea }: { label
   return (
     <label className="field">
       <span>{label}</span>
-      {textarea ? <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={8} /> : <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />}
+      {textarea ? <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={4} /> : <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />}
     </label>
   );
 }
 
-export function Btn({ onClick, children, disabled, danger }: { onClick: () => void; children: ReactNode; disabled?: boolean; danger?: boolean }) {
+export function Btn({ onClick, children, disabled, danger, primary }: { onClick: () => void; children: ReactNode; disabled?: boolean; danger?: boolean; primary?: boolean }) {
   return (
-    <button onClick={onClick} disabled={disabled} className={danger ? "danger" : undefined}>
+    <button onClick={onClick} disabled={disabled} className={danger ? "danger" : primary ? "btn-dark" : undefined}>
       {children}
     </button>
   );

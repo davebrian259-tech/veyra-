@@ -53,7 +53,7 @@ export function Overview({ mode, open }: { mode: "sim" | "live"; open: (contract
         <Field label="Title" value={job.title} onChange={(v) => setJob({ ...job, title: v })} />
         <Field label="Brief" value={job.brief} onChange={(v) => setJob({ ...job, brief: v })} textarea />
         <Field label="Budget (USDC)" value={job.budget} onChange={(v) => setJob({ ...job, budget: v })} />
-        <Btn onClick={() => r.run("Hiring Veyra", async () => {
+        <Btn primary onClick={() => r.run("Hiring Veyra", async () => {
           const x = mode === "sim"
             ? await post("/sim/hire", { title: job.title, description: job.brief, budgetUsd: Number(job.budget) })
             : await post("/contracts", { title: job.title, brief: job.brief, budgetUsd: Number(job.budget) });

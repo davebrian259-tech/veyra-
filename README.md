@@ -24,6 +24,9 @@ deliverable as untrusted input.
 | Hold the budget under owner rules | **NEAR Intents Agent API** policy wallet (owner-signed policy, budgets, allowed destinations, freeze) | `src/services/agents.ts`, `src/treasury/treasury.ts` |
 | Private planning and judging | **NEAR AI Cloud**, with TDX/GPU attestation and response signatures verified | `src/services/ai/near-ai.ts` |
 | Verifiable receipts | **`veyra-ledger` NEAR contract**: append-only Merkle roots of signed receipts | `contracts/ledger/` |
+| Market-wide fraud reports | **`veyra-ledger` `report()`**: Watchtower files evidence-hashed threat reports on-chain (NEP-297 `reported` events) | `src/watchtower/`, `contracts/ledger/` |
+| Be hired by other agents | **MCP** server (streamable HTTP) and an **A2A** agent card, the protocols the Agent Market speaks | `src/mcp/server.ts`, `src/contractor/identity.ts` |
+| Know-your-agent | A signed KYA credential (principal, controls, receipt key, ledger) that the owner countersigns with **NEP-413** | `src/contractor/identity.ts` |
 
 ## Try it (no keys, no money)
 
@@ -46,20 +49,41 @@ Requirements: Node ≥ 22.13, pnpm. Optional: Rust + `cargo-near` for the contra
    catalog, live pricing plans and live x402 quotes (free 402 challenges). The treasury is
    pinned from `market.near.ai/.well-known/x402`, every candidate gets an ALLOW or BLOCK verdict
    with reasons, and it prints which agent it would hire. Nothing is signed or paid.
-4. `pnpm --filter @veyra/server test`
-   **See:** 49 tests pass. They cover cheques, the key pool, every GUARD rule, injection and
+4. `pnpm watchtower`
+   **See:** a read-only scan of **every** agent on market.near.ai (about 670, in about 95 s). Each
+   agent's free x402 quote is compared with its own published pricing plan and with the market
+   treasury. The result is written to `docs/watchtower/latest.md`. The published scan (2026-11-11):
+   667 agents, 380 honest, 1 warning (a 14-day cheque window that its 14-day SLA explains),
+   0 flagged, 286 not taking calls.
+   Only clear integrity breaks are flagged: a payee, asset or network swap, or a quote above the
+   listed price. Rounding below the listing and SLA-driven windows are warnings, never accusations.
+5. `pnpm --filter @veyra/server test`
+   **See:** 55 tests pass. They cover cheques, the key pool, every GUARD rule, injection and
    taint, Merkle proofs, the full hire → deliver loop, all four attacks, job-board negotiation,
-   the kill switch, the vault policy and the Agent API owner flows.
-5. `cd contracts && cargo test`
-   **See:** 6 ledger-contract tests pass (writer-only, contiguous batches, immutable).
-6. Run the console: start the server with `pnpm dev:server`, then the web app with
-   `pnpm dev:web`. Open http://localhost:5173 and click **Enter simulator**.
+   the kill switch, the vault policy, the Agent API owner flows, the Watchtower rules and
+   reports, KYA signing, and a real MCP SDK client hiring Veyra over HTTP.
+6. `cd contracts && cargo test`
+   **See:** 9 ledger-contract tests pass (writer-only, contiguous batches, immutable, threat
+   reports with slug and evidence-hash validation).
+7. Run the console: start the server with `pnpm dev:server`, then the web app with
+   `pnpm dev:web`. Open http://localhost:5173. The landing page shows the latest market scan
+   as a dot matrix, one dot per agent. Click **Enter the simulator**.
    - **Hire Veyra:** you land on the contract with a live timeline, subtasks, quotes, payments
      and receipts, ending in "Delivered".
    - **Attack lab → Run attack** on each card: each card shows the security events and
      "attacker received 0.00 USDC".
    - **Treasury & ledger:** the three money tiers, the spend-key pool, the public P&L, the
      counterparty record and the anchors.
+   - **Watchtower → Run full scan:** `bait-switch` and `payee-swapper` are flagged. Their
+     reports go to the (simulated) ledger contract with an evidence hash, and **Evidence** shows
+     the stored challenge.
+   - **Identity & MCP:** the signed KYA credential (**Verify signature** → both true), the
+     MCP install line, and **Get estimate** (live quotes and GUARD verdicts, nothing paid).
+8. Hire Veyra from Claude Code (or any MCP client) while the server runs:
+   `claude mcp add --transport http veyra http://localhost:8787/mcp`
+   Then ask: *"Use veyra_estimate to price a competitor scan for 4 USDC, then watchtower_check
+   payee-swapper."* Tools: `veyra_estimate`, `veyra_hire`, `veyra_contract`,
+   `watchtower_check`, `watchtower_summary`, `verify_receipt`, `veyra_identity`, `veyra_ledger`.
 
 ## How it works
 
@@ -96,6 +120,10 @@ out-of-order settlement would fail.
   encoding (the live relayer decoded a test cheque from an unfunded account and rejected it on
   validity window, not format). Paid live hires need a funded spend account, which this repo
   does not include.
+- NEAR Gas Keys (NEP-611) cannot sign delegate actions from protocol 87, so they can't
+  replace the per-cheque key pool. The pool remains the right design.
+- Watchtower never pays and never accuses on ambiguity: on-chain reports are filed only for
+  flagged findings, and every report carries the hash of the stored evidence.
 - The NEAR Intents Agent API is an experimental beta. The vault flows are built on the official
   SDK and tested against a fake API. Use small amounts.
 
@@ -120,13 +148,16 @@ apps/server/src
   contractor/   engine (state machine), guard, brain (plan/verify/assemble), rank, receipts
   sim/          market simulator (honest + adversarial agents) and in-memory NEAR ledger
   services/     Agent API owner flows, BODYGUARD, NEAR AI Cloud, auth, audit
-  cli/          demo.ts, live-dry-run.ts
-apps/web        console (React; visual design pending)
+  watchtower/   market-wide integrity scanner, evidence store, on-chain reporter
+  mcp/          Veyra's MCP server (hire / estimate / watchtower / receipts)
+  cli/          demo.ts, live-dry-run.ts, watchtower.ts
+apps/web        landing page + console (React, Geist, Hugeicons; original Veyra mark in src/brand.tsx)
 contracts/ledger  veyra-ledger NEAR contract
-docs/           DIRECTION.md (why this product), ARCHITECTURE.md
+docs/           DIRECTION.md (why this product), ARCHITECTURE.md, watchtower/latest.md (live scan)
 ```
 
 All code was written during the hackathon window (from 2026-11-10). Libraries used:
 `@near-intents-agent-api/sdk`, `@near-js/*`, `@modelcontextprotocol/sdk`, `@phala/dcap-qvl`,
-`near-sdk` (Rust), `fastify`, `viem`, `zod`, `@noble/*`, NEAR Wallet Selector, React, Vite.
+`near-sdk` (Rust), `fastify`, `viem`, `zod`, `@noble/*`, NEAR Wallet Selector, React, Vite,
+`@hugeicons/react` + `@hugeicons/core-free-icons` (MIT), Geist and Geist Mono (OFL).
 License: MIT.

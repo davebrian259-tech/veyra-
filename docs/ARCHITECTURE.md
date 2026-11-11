@@ -17,7 +17,11 @@
 | `contractor/brain.ts` | Planning and judging on NEAR AI Cloud (attested) with deterministic fallbacks; models can fail work the rules passed, never pass work the rules failed |
 | `contractor/receipts.ts` | ed25519-signed canonical receipts; RFC 6962-style Merkle trees; anchoring and proofs |
 | `sim/` | A wire-compatible market (REST, A2A, x402, worker API, job board) and an in-memory NEAR ledger whose relayer enforces signatures, per-key nonces, expiry and balances |
-| `contracts/ledger` | Append-only anchors: writer allow-list, contiguous batches, NEP-297 events |
+| `watchtower/scanner.ts` | Pages through the whole catalog, asks every agent for a free 402, and judges it against its pricing plan and the pinned treasury (rules below). Stores evidence by hash and files reports for flagged agents |
+| `mcp/server.ts` | Stateless streamable-HTTP MCP server at `POST /mcp`. Read tools are public; `veyra_hire` needs the owner's session |
+| `contractor/identity.ts` | `veyra-kya/1` credential signed with the receipt key, an owner NEP-413 countersignature, and the A2A agent card |
+| `contractor/estimate.ts` | Plan + live quotes + GUARD verdicts with no spending (console, MCP, `live:dry-run`) |
+| `contracts/ledger` | Append-only anchors (writer allow-list, contiguous batches) and threat reports (`report`, `reports_for`, `get_reports`); NEP-297 events |
 
 ## GUARD rules (payment time)
 
@@ -39,6 +43,21 @@ requests, hidden HTML, invisible characters, role hijacks) and `tainted_recipien
 Veyra also has no general transfer capability: its only payment primitive is "pay the pinned
 market treasury the published price for this subtask".
 
+## Watchtower rules (market-wide, read-only)
+
+| Check | Severity | When |
+|---|---|---|
+| `payee` / `asset` / `network` | flag | the 402 pays anyone or anything other than the market's published treasury |
+| `price` | flag | the quote is above the agent's published default plan |
+| `price` | info | the quote is below the listing (for example sub-atomic rounding); no buyer is harmed |
+| `long_validity` | warn | the cheque window is over 7 days (allowed by the spec when the SLA is long; Veyra's GUARD still refuses) |
+| `validity_window` / `scheme` / `no_plan` | warn | an unusual window, a non-`exact` scheme, or no published price |
+| — | offline | the agent did not answer with a 402 |
+
+A flag writes a `watchtower_report` receipt, blocks the agent in Veyra's counterparty memory, and
+calls `report(subject, kind, evidence_hash)` on the ledger contract. A live run uses the
+writer key, and the simulator writes to its in-memory chain.
+
 ## Trust boundaries
 
 - **Owner wallet**: signs the vault policy, grants, freeze/unfreeze (Agent API) and NEP-413 logins. Never seen by Veyra.
@@ -51,6 +70,6 @@ market treasury the published price for this subtask".
 ## Data
 
 SQLite (`node:sqlite`). Tables: `contracts`, `subtasks`, `quotes`, `payments`, `contract_events`,
-`receipts`, `anchors`, `counterparties`, `spend_keys`, `kv`, plus the Agent API owner-flow tables
+`receipts`, `anchors`, `counterparties`, `spend_keys`, `kv`, `watch_scans`, `watch_results`, plus the Agent API owner-flow tables
 (`agents`, `owner_intents`, `grants`, `veyra_policies`, `operations`, `approvals`) and the
 hash-chained `audit_log`. Secrets are sealed with AES-256-GCM using per-record additional data.

@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@hugeicons/core-free-icons": "4.4.0",
+    "@hugeicons/react": "1.1.10",
     "@near-wallet-selector/core": "10.1.4",
     "@near-wallet-selector/here-wallet": "10.1.4",
     "@near-wallet-selector/meteor-wallet": "10.1.4",
