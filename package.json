@@ -1,0 +1,27 @@
+{
+  "name": "veyra",
+  "private": true,
+  "description": "Veyra \u2014 AI-powered autonomous financial operating system on NEAR",
+  "license": "MIT",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev:server": "pnpm --filter @veyra/server dev",
+    "dev:web": "pnpm --filter @veyra/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "contracts:test": "cd contracts && cargo test",
+    "contracts:build": "./scripts/build-contracts.sh"
+  },
+  "pnpm": {
+    "overrides": {
+      "chainsig.js>@noble/curves": "1.9.7"
+    },
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

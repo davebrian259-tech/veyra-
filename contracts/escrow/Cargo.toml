@@ -1,0 +1,16 @@
+[package]
+name = "veyra-escrow"
+description = "UNDO: milestone escrow and conditional payments for Veyra on NEAR"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { workspace = true }
+
+[dev-dependencies]
+near-sdk = { workspace = true, features = ["unit-testing"] }
+

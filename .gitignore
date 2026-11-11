@@ -147,3 +147,13 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Veyra
+contracts/target/
+apps/server/data/
+apps/server/dist/
+apps/web/dist/
+*.db
+*.db-wal
+*.db-shm
+dev-encryption.key
