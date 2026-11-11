@@ -2,10 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { publicConfig } from "../config.js";
 import type { AppContext } from "../context.js";
+import type { Scheduler } from "../scheduler.js";
 import { body, query, requireUser, SESSION_COOKIE, sessionToken, signedChallenge } from "./http.js";
 
-export function coreRoutes(app: FastifyInstance, ctx: AppContext) {
-  app.get("/health", async () => ({ ok: true, monitor: ctx.monitor.lastRun }));
+export function coreRoutes(app: FastifyInstance, ctx: AppContext, scheduler: Scheduler) {
+  app.get("/health", async () => ({ ok: true, mode: ctx.config.VEYRA_MODE, scheduler: scheduler.lastRun }));
   app.get("/config", async () => publicConfig(ctx.config));
 
   // -------------------------------------------------------------- auth (NEP-413 wallet login)

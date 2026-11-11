@@ -6,7 +6,6 @@ import { fromAtomic, toAtomic, usdToAtomic } from "../src/lib/amounts.js";
 import { canonicalJson, hashObject, SecretBox } from "../src/lib/crypto.js";
 import { verifyNep413, signNep413 } from "../src/lib/nep413.js";
 import { extractEvents, lastSuccessValue, txSucceeded, type TxOutcome } from "../src/lib/near-rpc.js";
-import { clampPlan, heuristicPlan, planSchema } from "../src/services/ai/planner.js";
 import { AiRouter } from "../src/services/ai/router.js";
 import { NearAiCloud, replayRtmr3, type Attestation } from "../src/services/ai/near-ai.js";
 import { AuditLog, redact } from "../src/services/audit.js";
@@ -14,8 +13,6 @@ import { findLookalike, validateForChain } from "../src/services/bodyguard/addre
 import { Bodyguard, decide } from "../src/services/bodyguard/engine.js";
 import { examplePolicy, toApiPolicy, veyraPolicySchema } from "../src/services/policy.js";
 import { mapApiStatus } from "../src/services/execution.js";
-import { mapOneClickStatus } from "../src/services/intents.js";
-import { reputation } from "../src/services/wanted.js";
 import { keypair, USDC } from "./helpers.js";
 
 describe("crypto", () => {
@@ -81,28 +78,7 @@ describe("policy mapping", () => {
   });
 });
 
-describe("planner", () => {
-  const brief = "I have $200. Find someone who can build my business website. Keep the cost below $150. Do not release payment until the work is completed. Keep the remaining funds safe.";
-  it("interprets the brief's example deterministically", () => {
-    const p = heuristicPlan(brief);
-    expect(p).toMatchObject({ intent: "hire", budgetUsd: 200, maxSpendUsd: 150, reserveUsd: 50 });
-    expect(p.hire?.skills).toContain("web-development");
-    expect(p.hire?.releaseOnlyOnCompletion).toBe(true);
-  });
-  it("clamps AI output that widens the user's limits", () => {
-    const ai = planSchema.parse({ intent: "hire", summary: "Guaranteed great result", budgetUsd: 5000, maxSpendUsd: 900, hire: { title: "t", description: "d", skills: ["web"], milestones: [{ title: "a", sharePct: 30 }, { title: "b", sharePct: 30 }], completionConditions: [], evidenceRequirements: [], releaseOnlyOnCompletion: false } });
-    const { plan, adjustments } = clampPlan(ai, brief, {});
-    expect(plan.budgetUsd).toBe(200);
-    expect(plan.maxSpendUsd).toBe(150);
-    expect(plan.hire?.milestones.reduce((n, m) => n + m.sharePct, 0)).toBeCloseTo(100);
-    expect(plan.hire?.releaseOnlyOnCompletion).toBe(true);
-    expect(plan.summary).not.toMatch(/guarantee/i);
-    expect(adjustments.length).toBeGreaterThanOrEqual(3);
-  });
-  it("parses allocations", () => {
-    const p = heuristicPlan("Allocate $200: 60% USDC and 40% NEAR");
-    expect(p.allocation?.targets).toEqual([{ symbol: "USDC", pct: 60 }, { symbol: "NEAR", pct: 40 }]);
-  });
+describe("AI router", () => {
   it("refuses to send key material to any model", () => {
     expect(() => AiRouter.assertNoSecrets([{ role: "user", content: "token ngt_abcdefghijklmnop" }])).toThrow();
   });
@@ -161,8 +137,6 @@ describe("status mapping", () => {
     expect(mapApiStatus(s("PROCESSING", { tx_hash: "abc" }))).toBe("confirmed");
     expect(mapApiStatus(s("SUCCESS"))).toBe("settled");
     expect(mapApiStatus(s("UNCERTAIN"))).toBe("uncertain");
-    expect(mapOneClickStatus("KNOWN_DEPOSIT_TX")).toBe("submitted");
-    expect(mapOneClickStatus("SUCCESS")).toBe("settled");
   });
   it("reads NEAR tx outcomes", () => {
     const o: TxOutcome = {
@@ -175,16 +149,6 @@ describe("status mapping", () => {
     expect(extractEvents(o, "c")[0].event).toBe("escrow_created");
     expect(lastSuccessValue(o)).toEqual({ big_r: 1 });
     expect(txSucceeded(o)).toBe(false); // a failed receipt hides behind a top-level success
-  });
-});
-
-describe("WANTED reputation", () => {
-  it("smooths ratings and penalises disputes", () => {
-    const good = reputation({ rating: 4.9, rating_count: 40, completed_jobs: 40, disputes: 0 });
-    const disputed = reputation({ rating: 4.9, rating_count: 40, completed_jobs: 40, disputes: 10 });
-    const newbie = reputation({ rating: 5, rating_count: 1, completed_jobs: 1, disputes: 0 });
-    expect(good).toBeGreaterThan(disputed);
-    expect(good).toBeGreaterThan(newbie);
   });
 });
 

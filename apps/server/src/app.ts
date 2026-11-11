@@ -7,8 +7,8 @@ import { buildContext, type ContextOverrides } from "./context.js";
 import { HttpError } from "./lib/errors.js";
 import { agentRoutes } from "./routes/agents.js";
 import { coreRoutes } from "./routes/core.js";
-import { marketRoutes } from "./routes/market.js";
-import { moneyRoutes } from "./routes/money.js";
+import { contractorRoutes } from "./routes/contractor.js";
+import { Scheduler } from "./scheduler.js";
 
 export async function buildApp(config: Config, overrides: ContextOverrides = {}) {
   const ctx = buildContext(config, overrides);
@@ -27,12 +27,12 @@ export async function buildApp(config: Config, overrides: ContextOverrides = {})
     return reply.status(status).send({ error: status >= 500 ? "internal_error" : "error", message: status >= 500 ? "internal error" : (err as Error).message });
   });
 
-  coreRoutes(app, ctx);
+  const scheduler = new Scheduler(ctx, config.MONITOR_INTERVAL_MS);
+  coreRoutes(app, ctx, scheduler);
   agentRoutes(app, ctx);
-  moneyRoutes(app, ctx);
-  marketRoutes(app, ctx);
+  contractorRoutes(app, ctx, scheduler);
   app.addHook("onClose", async () => {
-    ctx.monitor.stop();
+    scheduler.stop();
   });
-  return { app, ctx };
+  return { app, ctx, scheduler };
 }

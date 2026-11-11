@@ -163,21 +163,6 @@ const MIGRATIONS: string[] = [
     read INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
-  CREATE TABLE goals (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    agent_id TEXT,
-    kind TEXT NOT NULL,
-    title TEXT NOT NULL,
-    prompt TEXT,
-    params_json TEXT NOT NULL,
-    plan_json TEXT,
-    status TEXT NOT NULL,
-    auto_execute INTEGER NOT NULL DEFAULT 0,
-    progress_json TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
   CREATE TABLE ai_runs (
     id TEXT PRIMARY KEY,
     user_id TEXT,
@@ -194,114 +179,152 @@ const MIGRATIONS: string[] = [
     error TEXT,
     created_at TEXT NOT NULL
   );
-  CREATE TABLE providers (
+  -- Veyra's x402 spend account: one NEAR account, a pool of full-access keys so every
+  -- in-flight cheque has its own nonce sequence (cheques settle out of order).
+  CREATE TABLE spend_keys (
     id TEXT PRIMARY KEY,
-    kind TEXT NOT NULL,
-    name TEXT NOT NULL,
     account_id TEXT NOT NULL,
-    description TEXT NOT NULL,
-    skills_json TEXT NOT NULL,
-    base_price_usd REAL NOT NULL,
-    min_price_usd REAL,
-    rating REAL NOT NULL DEFAULT 0,
-    rating_count INTEGER NOT NULL DEFAULT 0,
-    completed_jobs INTEGER NOT NULL DEFAULT 0,
-    disputes INTEGER NOT NULL DEFAULT 0,
-    availability TEXT NOT NULL DEFAULT 'available',
-    offer_endpoint TEXT,
-    demo INTEGER NOT NULL DEFAULT 0,
-    owner_user_id TEXT,
-    created_at TEXT NOT NULL
+    public_key TEXT NOT NULL UNIQUE,
+    secret_enc TEXT NOT NULL,
+    status TEXT NOT NULL,
+    locked_by TEXT,
+    last_nonce TEXT NOT NULL DEFAULT '0',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
   );
-  CREATE TABLE jobs (
+  CREATE TABLE kv (
+    key TEXT PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE contracts (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    goal_id TEXT,
+    source TEXT NOT NULL,
+    external_ref TEXT UNIQUE,
+    buyer TEXT NOT NULL,
     title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    skills_json TEXT NOT NULL,
-    budget_max_usd REAL NOT NULL,
-    deadline TEXT NOT NULL,
-    completion_conditions_json TEXT NOT NULL,
+    brief TEXT NOT NULL,
+    budget_atomic TEXT NOT NULL,
+    revenue_atomic TEXT NOT NULL DEFAULT '0',
+    currency TEXT NOT NULL DEFAULT 'USDC',
+    margin_bps INTEGER NOT NULL DEFAULT 2000,
     status TEXT NOT NULL,
-    selected_offer_id TEXT,
-    escrow_ref TEXT,
+    step TEXT NOT NULL,
+    plan_json TEXT,
+    plan_source_json TEXT,
+    deliverable_md TEXT,
+    error TEXT,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_run_at TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    delivered_at TEXT
   );
-  CREATE TABLE offers (
+  CREATE INDEX contracts_status ON contracts(status, next_run_at);
+  CREATE TABLE subtasks (
     id TEXT PRIMARY KEY,
-    job_id TEXT NOT NULL,
-    provider_id TEXT NOT NULL,
-    price_usd REAL NOT NULL,
-    eta_days INTEGER NOT NULL,
-    message TEXT NOT NULL,
-    status TEXT NOT NULL,
-    round INTEGER NOT NULL DEFAULT 1,
-    history_json TEXT NOT NULL,
-    simulated INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-  CREATE TABLE escrows (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    job_id TEXT,
-    network TEXT NOT NULL,
-    contract_id TEXT NOT NULL,
-    onchain_id TEXT,
-    payer TEXT NOT NULL,
-    approver TEXT NOT NULL,
-    provider_account TEXT NOT NULL,
-    asset_json TEXT NOT NULL,
-    total TEXT NOT NULL,
-    terms_json TEXT NOT NULL,
-    terms_hash TEXT NOT NULL,
-    funding_mode TEXT NOT NULL,
-    status TEXT NOT NULL,
-    onchain_json TEXT,
-    operation_id TEXT,
-    create_tx_hash TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-  CREATE TABLE chain_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    network TEXT NOT NULL,
-    contract_id TEXT NOT NULL,
-    tx_hash TEXT NOT NULL,
+    contract_id TEXT NOT NULL REFERENCES contracts(id),
     idx INTEGER NOT NULL,
-    standard TEXT NOT NULL,
-    event TEXT NOT NULL,
-    data_json TEXT NOT NULL,
+    title TEXT NOT NULL,
+    spec TEXT NOT NULL,
+    criteria_json TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    search_json TEXT NOT NULL,
+    cap_atomic TEXT NOT NULL,
+    status TEXT NOT NULL,
+    agent_handle TEXT,
+    agent_id TEXT,
+    price_atomic TEXT,
+    result_md TEXT,
+    verification_json TEXT,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    excluded_json TEXT NOT NULL DEFAULT '[]',
     created_at TEXT NOT NULL,
-    UNIQUE(tx_hash, idx)
+    updated_at TEXT NOT NULL,
+    UNIQUE(contract_id, idx)
   );
-  CREATE TABLE evidence (
+  CREATE TABLE quotes (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    sha256 TEXT NOT NULL,
-    filename TEXT NOT NULL,
-    mime TEXT NOT NULL,
-    size INTEGER NOT NULL,
-    path TEXT NOT NULL,
+    subtask_id TEXT NOT NULL REFERENCES subtasks(id),
+    rail TEXT NOT NULL,
+    agent_handle TEXT NOT NULL,
+    agent_id TEXT,
+    amount_atomic TEXT,
+    plan_atomic TEXT,
+    challenge_json TEXT,
+    counter_atomic TEXT,
+    decision TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    score REAL,
     created_at TEXT NOT NULL
   );
-  CREATE TABLE chain_sig_requests (
+  CREATE TABLE payments (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    chain TEXT NOT NULL,
-    path TEXT NOT NULL,
-    derived_address TEXT NOT NULL,
-    request_json TEXT NOT NULL,
-    unsigned_tx_json TEXT NOT NULL,
-    payloads_json TEXT NOT NULL,
-    near_tx_hash TEXT,
-    signed_tx TEXT,
-    broadcast_hash TEXT,
+    contract_id TEXT NOT NULL,
+    subtask_id TEXT NOT NULL,
+    rail TEXT NOT NULL,
+    agent_handle TEXT NOT NULL,
+    amount_atomic TEXT NOT NULL,
+    payee TEXT NOT NULL,
+    asset TEXT NOT NULL,
+    network TEXT NOT NULL,
     status TEXT NOT NULL,
-    operation_id TEXT,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    cheque_hash TEXT,
+    key_id TEXT,
+    nonce TEXT,
+    max_block_height TEXT,
+    task_id TEXT,
+    guard_json TEXT,
+    error TEXT,
     created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX payments_contract ON payments(contract_id);
+  CREATE TABLE contract_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    contract_id TEXT NOT NULL,
+    ts TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    message TEXT NOT NULL,
+    data_json TEXT
+  );
+  CREATE INDEX contract_events_c ON contract_events(contract_id, id);
+  CREATE TABLE receipts (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL UNIQUE,
+    contract_id TEXT NOT NULL,
+    subtask_id TEXT,
+    kind TEXT NOT NULL,
+    body_json TEXT NOT NULL,
+    hash TEXT NOT NULL,
+    signature TEXT NOT NULL,
+    anchor_id TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE anchors (
+    id TEXT PRIMARY KEY,
+    root TEXT NOT NULL,
+    from_seq INTEGER NOT NULL,
+    to_seq INTEGER NOT NULL,
+    count INTEGER NOT NULL,
+    network TEXT NOT NULL,
+    contract_id TEXT,
+    tx_hash TEXT,
+    status TEXT NOT NULL,
+    error TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE counterparties (
+    handle TEXT PRIMARY KEY,
+    agent_id TEXT,
+    hires INTEGER NOT NULL DEFAULT 0,
+    passes INTEGER NOT NULL DEFAULT 0,
+    failures INTEGER NOT NULL DEFAULT 0,
+    attacks INTEGER NOT NULL DEFAULT 0,
+    blocked INTEGER NOT NULL DEFAULT 0,
+    note TEXT,
     updated_at TEXT NOT NULL
   );
   `,

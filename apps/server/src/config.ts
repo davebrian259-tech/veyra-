@@ -34,49 +34,66 @@ const schema = z.object({
   /** Days a grant stays valid (max 365). */
   AGENT_GRANT_TTL_DAYS: z.coerce.number().min(1).max(365).default(30),
 
-  // NEAR Intents 1Click API (manual swaps). JWT optional: without it 1Click adds its default fee.
-  ONECLICK_API_URL: z.string().default("https://1click.chaindefuser.com"),
-  ONECLICK_JWT: z.string().optional(),
-
-  // NEAR network for the user's wallet, auth and Veyra contracts.
-  NEAR_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
+  // NEAR network for wallet login (owner identity)
+  NEAR_NETWORK: z.enum(["testnet", "mainnet"]).default("mainnet"),
   NEAR_RPC_URL: z.string().optional(),
   NEAR_MAINNET_RPC_URL: z.string().default("https://rpc.mainnet.near.org"),
-  ESCROW_CONTRACT_ID: z.string().optional(),
-  REWARDS_CONTRACT_ID: z.string().optional(),
-  /**
-   * Escrow contract on mainnet that agents may fund through the Agent API's native NEAR call.
-   * The Agent API only runs on mainnet, so agent-funded escrow needs a mainnet deployment.
-   */
-  AGENT_ESCROW_CONTRACT_ID: z.string().optional(),
 
-  // NEAR AI Cloud (private inference, OpenAI-compatible, TEE attested).
+  // NEAR AI Cloud (private, TEE-attested inference) for planning and judging.
   NEAR_AI_API_KEY: z.string().optional(),
   NEAR_AI_BASE_URL: z.string().default("https://cloud-api.near.ai"),
   /** Canonical model id (aliases are refused with x-no-aliasing, which signature checks need). */
   NEAR_AI_MODEL: z.string().default("z-ai/glm-5.3-flash"),
-  /** Require a verified response signature before using a private-inference result. */
+  /** Refuse a private-inference result whose response signature cannot be verified. */
   NEAR_AI_REQUIRE_SIGNATURE: bool,
 
-  // Optional ordinary OpenAI-compatible provider for non-sensitive tasks only.
+  // Optional ordinary OpenAI-compatible provider, for non-sensitive tasks only.
   STANDARD_AI_API_KEY: z.string().optional(),
   STANDARD_AI_BASE_URL: z.string().optional(),
   STANDARD_AI_MODEL: z.string().optional(),
 
-  // Chain Signatures
-  CHAIN_SIGNATURES_CONTRACT_ID: z.string().optional(),
-  EVM_RPC_URL: z.string().default("https://ethereum-sepolia-rpc.publicnode.com"),
-  EVM_CHAIN_ID: z.coerce.number().default(11155111),
+  // Contractor runtime
+  /** sim: local market simulator (no credentials, no real money). live: market.near.ai + NEAR mainnet. */
+  VEYRA_MODE: z.enum(["sim", "live"]).default("sim"),
+  /** Share of each contract kept as margin (basis points). */
+  CONTRACT_MARGIN_BPS: z.coerce.number().int().min(0).max(9000).default(2000),
+  /** Run a fully fooled model against poisoned deliverables to prove GUARD holds (sim default on). */
+  ASSUME_COMPROMISED_MODEL: z.string().optional(),
 
-  /** Seed clearly-labelled demo providers into WANTED. */
-  SEED_DEMO_PROVIDERS: bool,
+  // Agent Market (live mode)
+  MARKET_ORIGIN: z.string().default("https://market.near.ai"),
+  /** aat_ work token of Veyra's own listing (to earn). Backend only. */
+  MARKET_WORKER_TOKEN: z.string().optional(),
+  MARKET_WEBHOOK_SECRET: z.string().optional(),
+
+  // Spend account (x402 cheques)
+  /** Named mainnet account for the spend account; defaults to an implicit account. */
+  SPEND_ACCOUNT_ID: z.string().optional(),
+  /** Import an existing key (ed25519:...). Otherwise one is generated and sealed. */
+  SPEND_ACCOUNT_KEY: z.string().optional(),
+  SPEND_KEY_POOL: z.coerce.number().int().min(1).max(32).default(4),
+  /** The spend account never holds more than this (USDC). */
+  MAX_FLOAT_USDC: z.coerce.number().positive().default(5),
+  /** NEP-141 contract and Agent API asset id of USDC on NEAR. */
+  USDC_CONTRACT: z.string().default("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
+
+  // Policy vault (NEAR Intents Agent API agent)
+  VAULT_AGENT_ID: z.string().optional(),
+
+  // Receipt anchoring
+  LEDGER_CONTRACT_ID: z.string().optional(),
+  LEDGER_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
+  /** Writer account for the ledger when it lives on a different network than the spend account. */
+  LEDGER_WRITER_ID: z.string().optional(),
+  LEDGER_WRITER_KEY: z.string().optional(),
+
   /** Background monitor interval. */
   MONITOR_INTERVAL_MS: z.coerce.number().default(5000),
 });
 
 export type Config = z.infer<typeof schema> & {
   nearRpcUrl: string;
-  chainSignaturesContractId: string;
+  assumeCompromisedModel: boolean;
 };
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
@@ -84,35 +101,24 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   return {
     ...parsed,
     nearRpcUrl: parsed.NEAR_RPC_URL ?? `https://rpc.${parsed.NEAR_NETWORK}.near.org`,
-    chainSignaturesContractId:
-      parsed.CHAIN_SIGNATURES_CONTRACT_ID ??
-      (parsed.NEAR_NETWORK === "mainnet" ? "v1.signer" : "v1.signer-prod.testnet"),
+    assumeCompromisedModel: parsed.ASSUME_COMPROMISED_MODEL ? ["1", "true"].includes(parsed.ASSUME_COMPROMISED_MODEL) : parsed.VEYRA_MODE === "sim",
   };
 }
 
 /** What the frontend may know about the deployment. Never includes secrets. */
 export function publicConfig(c: Config) {
   return {
+    mode: c.VEYRA_MODE,
     nearNetwork: c.NEAR_NETWORK,
-    nearRpcUrl: c.nearRpcUrl,
     authRecipient: c.VEYRA_AUTH_RECIPIENT,
-    escrowContractId: c.ESCROW_CONTRACT_ID ?? null,
-    rewardsContractId: c.REWARDS_CONTRACT_ID ?? null,
-    agentEscrowContractId: c.AGENT_ESCROW_CONTRACT_ID ?? null,
-    chainSignaturesContractId: c.chainSignaturesContractId,
-    evmChainId: c.EVM_CHAIN_ID,
+    marketOrigin: c.VEYRA_MODE === "live" ? c.MARKET_ORIGIN : "https://market.sim (local simulator)",
+    marginBps: c.CONTRACT_MARGIN_BPS,
+    maxFloatUsdc: c.MAX_FLOAT_USDC,
     integrations: {
-      agentApi: {
-        configured: Boolean(c.NEAR_INTENTS_AGENT_API_KEY),
-        network: "mainnet",
-        note: "The NEAR Intents Agent API is an experimental mainnet-only beta with real funds.",
-      },
-      oneClick: { configured: true, authenticated: Boolean(c.ONECLICK_JWT) },
+      agentMarket: { mode: c.VEYRA_MODE, workerConfigured: c.VEYRA_MODE === "sim" || Boolean(c.MARKET_WORKER_TOKEN) },
+      agentApiVault: { configured: c.VEYRA_MODE === "sim" || Boolean(c.NEAR_INTENTS_AGENT_API_KEY && c.VAULT_AGENT_ID), simulated: c.VEYRA_MODE === "sim", note: "Live vault: NEAR Intents Agent API (mainnet beta, or the demo API with a demo key)." },
       nearAiCloud: { configured: Boolean(c.NEAR_AI_API_KEY), model: c.NEAR_AI_MODEL },
-      standardAi: { configured: Boolean(c.STANDARD_AI_API_KEY && c.STANDARD_AI_BASE_URL) },
-      escrow: { configured: Boolean(c.ESCROW_CONTRACT_ID), network: c.NEAR_NETWORK },
-      rewards: { configured: Boolean(c.REWARDS_CONTRACT_ID), network: c.NEAR_NETWORK },
-      chainSignatures: { contractId: c.chainSignaturesContractId, evmChainId: c.EVM_CHAIN_ID },
+      ledger: { contractId: c.LEDGER_CONTRACT_ID ?? null, network: c.LEDGER_NETWORK, simulated: c.VEYRA_MODE === "sim" },
     },
   };
 }

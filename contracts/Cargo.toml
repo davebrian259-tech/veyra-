@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["escrow", "rewards"]
+members = ["ledger"]
 
 [workspace.dependencies]
 near-sdk = "5.30.1"

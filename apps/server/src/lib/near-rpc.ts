@@ -66,6 +66,11 @@ export class NearRpc {
     }
   }
 
+  async latestBlock(): Promise<{ hash: string; height: number }> {
+    const b = await this.call<{ header: { hash: string; height: number } }>("block", { finality: "final" });
+    return { hash: b.header.hash, height: b.header.height };
+  }
+
   viewAccessKey(accountId: string, publicKey: string) {
     return this.call<AccessKeyInfo["access_key"]>("query", {
       request_type: "view_access_key",

@@ -12,14 +12,10 @@ export function testConfig(extra: Record<string, string> = {}) {
   return loadConfig({
     NODE_ENV: "test",
     DATABASE_PATH: ":memory:",
-    EVIDENCE_DIR: "/tmp/claude-0/-home-user-veyra-/89c10bba-8c36-52bb-a283-5a50f33962ff/scratchpad/test-evidence",
     NEAR_INTENTS_AGENT_API_KEY: "test-partner-key",
     NEAR_INTENTS_AGENT_API_URL: "https://agent-api.test",
     ONECLICK_API_URL: "https://oneclick.test",
-    ESCROW_CONTRACT_ID: "escrow.veyra.testnet",
-    REWARDS_CONTRACT_ID: "pol.veyra.testnet",
-    AGENT_ESCROW_CONTRACT_ID: "escrow.veyra.near",
-    SEED_DEMO_PROVIDERS: "1",
+    VEYRA_MODE: "live",
     ...extra,
   });
 }
@@ -145,7 +141,7 @@ export async function setup(extraEnv: Record<string, string> = {}) {
   const net = fakeNetwork();
   const rpc = new FakeRpc();
   const db = new Db(":memory:");
-  const { app, ctx } = await buildApp(testConfig(extraEnv), { db, fetch: net.fetcher, rpc, mainnetRpc: rpc, verifyKeysOnChain: true, nearAi: null });
+  const { app, ctx, scheduler } = await buildApp(testConfig(extraEnv), { db, fetch: net.fetcher, rpc, verifyKeysOnChain: true, nearAi: null });
   const accountId = "alice.testnet";
   const kp = keypair();
   const responses: string[] = [];
@@ -160,7 +156,7 @@ export async function setup(extraEnv: Record<string, string> = {}) {
     const r = await call("POST", "/auth/login", { accountId, publicKey: kp.publicKey, nonce: ch.json.nonce, signature: sign(ch.json.message, ch.json.nonce, ch.json.recipient) });
     return r.json.token as string;
   };
-  return { app, ctx, net, rpc, db, call, login, sign, kp, accountId, responses };
+  return { app, ctx, scheduler, net, rpc, db, call, login, sign, kp, accountId, responses };
 }
 
 /** Signs an Agent API nep413 intent the way the wallet would. */
