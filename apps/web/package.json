@@ -1,0 +1,30 @@
+{
+  "name": "@veyra/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@near-wallet-selector/core": "10.1.4",
+    "@near-wallet-selector/here-wallet": "10.1.4",
+    "@near-wallet-selector/intear-wallet": "10.1.4",
+    "@near-wallet-selector/meteor-wallet": "10.1.4",
+    "@near-wallet-selector/modal-ui": "10.1.4",
+    "@near-wallet-selector/my-near-wallet": "10.1.4",
+    "buffer": "^6.0.3",
+    "react": "19",
+    "react-dom": "19"
+  },
+  "devDependencies": {
+    "@types/react": "19",
+    "@types/react-dom": "19",
+    "@vitejs/plugin-react": "^6.3.0",
+    "typescript": "5.9",
+    "vite": "^8.3.8"
+  }
+}

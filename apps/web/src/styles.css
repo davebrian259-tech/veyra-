@@ -1,0 +1,25 @@
+/* Functional placeholder styling. The visual design will replace this. */
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; }
+.app { max-width: 1100px; margin: 0 auto; padding: 16px; }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+h1 small { font-size: 0.5em; font-weight: normal; opacity: 0.7; }
+nav { display: flex; flex-wrap: wrap; gap: 4px; margin: 12px 0; }
+nav button.active { font-weight: bold; outline: 2px solid currentColor; }
+.section { border: 1px solid #8884; border-radius: 6px; padding: 12px; margin: 12px 0; }
+.section h2 { margin: 0 0 8px; font-size: 1.1em; }
+.note { opacity: 0.75; font-size: 0.9em; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; }
+.field { display: flex; flex-direction: column; margin: 6px 0; }
+.field input, .field textarea { font: inherit; padding: 4px; }
+.field textarea { font-family: ui-monospace, monospace; font-size: 12px; }
+button { margin: 2px; cursor: pointer; }
+button.danger { color: #fff; background: #b42318; border: 1px solid #b42318; }
+.pill { border: 1px solid #8886; border-radius: 999px; padding: 2px 8px; font-size: 0.85em; }
+.json { background: #8881; padding: 8px; overflow: auto; max-height: 420px; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+.error { color: #b42318; white-space: pre-wrap; }
+.busy { font-style: italic; }
+.verdict { border-left: 4px solid; padding: 4px 8px; margin: 6px 0; }
+.verdict.safe { border-color: #12b76a; }
+.verdict.caution { border-color: #f79009; }
+.verdict.danger { border-color: #b42318; }
