@@ -328,6 +328,42 @@ const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE watch_scans (
+    id TEXT PRIMARY KEY,
+    origin TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    total INTEGER NOT NULL DEFAULT 0,
+    ok INTEGER NOT NULL DEFAULT 0,
+    warn INTEGER NOT NULL DEFAULT 0,
+    flagged INTEGER NOT NULL DEFAULT 0,
+    offline INTEGER NOT NULL DEFAULT 0,
+    treasury_json TEXT,
+    status TEXT NOT NULL
+  );
+  CREATE TABLE watch_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id TEXT NOT NULL,
+    handle TEXT NOT NULL,
+    agent_id TEXT,
+    name TEXT,
+    category TEXT,
+    verdict TEXT NOT NULL,
+    quoted_atomic TEXT,
+    listed_atomic TEXT,
+    pay_to TEXT,
+    network TEXT,
+    delivered_jobs INTEGER,
+    trust INTEGER,
+    findings_json TEXT NOT NULL,
+    evidence_hash TEXT,
+    report_ref TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX watch_results_handle ON watch_results(handle, created_at);
+  CREATE INDEX watch_results_scan ON watch_results(scan_id);
+  `,
 ];
 
 export type Row = Record<string, unknown>;

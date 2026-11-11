@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "demo": "tsx src/cli/demo.ts",
-    "live:dry-run": "tsx --env-file-if-exists=.env src/cli/live-dry-run.ts"
+    "live:dry-run": "tsx --env-file-if-exists=.env src/cli/live-dry-run.ts",
+    "watchtower": "tsx src/cli/watchtower.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",

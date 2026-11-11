@@ -86,6 +86,11 @@ export class ReceiptService {
     return this.signingKey().pk;
   }
 
+  /** Signs a 32-byte hex digest with the receipt key (used for the KYA credential). */
+  sign(hashHex: string) {
+    return hex(ed25519.sign(unhex(hashHex), this.signingKey().sk));
+  }
+
   issue(kind: string, contractId: string, subtaskId: string | null, body: Record<string, unknown>) {
     const id = randomId("rcp_");
     const full = { v: 1, id, kind, contractId, subtaskId, issuedAt: now(), issuer: this.publicKey(), ...body };

@@ -16,6 +16,7 @@ export function testConfig(extra: Record<string, string> = {}) {
     NEAR_INTENTS_AGENT_API_URL: "https://agent-api.test",
     ONECLICK_API_URL: "https://oneclick.test",
     VEYRA_MODE: "live",
+    WATCHTOWER_INTERVAL_HOURS: "0",
     ...extra,
   });
 }

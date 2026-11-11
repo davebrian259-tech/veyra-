@@ -8,6 +8,11 @@ import type { Scheduler } from "../scheduler.js";
 import { body, params, query, requireUser, SESSION_COOKIE } from "./http.js";
 import { randomToken, sha256Hex } from "../lib/crypto.js";
 import { now } from "../db.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { buildMcpServer } from "../mcp/server.js";
+import { agentCard, buildCredential, kyaMessage, signCredential, verifyCredential } from "../contractor/identity.js";
+import { estimate } from "../contractor/estimate.js";
+import { sessionToken, signedChallenge } from "./http.js";
 
 /** Attack-lab scenarios: each puts one adversarial market agent first in line. */
 export const LAB_SCENARIOS = {
@@ -61,6 +66,56 @@ export function contractorRoutes(app: FastifyInstance, ctx: AppContext, schedule
   app.post("/receipts/anchor", async (req) => {
     requireUser(ctx, req);
     return { anchored: await ctx.receipts.anchorPending() };
+  });
+
+  const publicUrl = (req: { protocol: string; headers: Record<string, unknown> }) => ctx.config.PUBLIC_API_URL ?? `${req.protocol}://${String(req.headers.host ?? "localhost")}`;
+
+  // -------------------------------------------------------------- identity (KYA) & agent card
+  app.get("/.well-known/agent-card.json", async (req) => agentCard(ctx, publicUrl(req)));
+  app.get("/kya", async (req) => signCredential(ctx, buildCredential(ctx, publicUrl(req))));
+  app.post("/kya/verify", async (req) => verifyCredential(body(z.object({ credential: z.unknown(), hash: z.string(), signature: z.object({ publicKey: z.string(), value: z.string() }) }), req)));
+  /** The owner countersigns the credential hash with their NEAR wallet (NEP-413). */
+  app.post("/kya/challenge", async (req) => {
+    const user = requireUser(ctx, req);
+    const signed = signCredential(ctx, buildCredential(ctx, publicUrl(req)));
+    return { ...ctx.auth.createChallenge(user.accountId, "veyra_policy", kyaMessage(signed.hash)), hash: signed.hash };
+  });
+  app.post("/kya/attest", async (req) => {
+    const user = requireUser(ctx, req);
+    const b = body(z.object({ hash: z.string().length(64), signed: signedChallenge }), req);
+    const sig = await ctx.auth.verifyOwnerAction(user, "veyra_policy", b.signed, kyaMessage(b.hash));
+    const att = { owner: user.accountId, credentialHash: b.hash, publicKey: sig.publicKey, signature: sig.signature, nonce: sig.nonce, message: sig.message, recipient: ctx.config.VEYRA_AUTH_RECIPIENT, at: now() };
+    ctx.db.run("INSERT OR REPLACE INTO kv (key, value_json, updated_at) VALUES ('kya.owner_attestation', ?, ?)", [JSON.stringify(att), now()]);
+    return att;
+  });
+
+  // -------------------------------------------------------------- estimate (no spending)
+  app.post("/estimate", async (req) => {
+    requireUser(ctx, req);
+    const b = body(z.object({ title: z.string().min(3).max(200), brief: z.string().min(10).max(4000), budgetUsd: z.number().positive().max(1000) }), req);
+    return estimate({ catalog: ctx.catalog, x402: ctx.x402, guard: ctx.guard, brain: ctx.brain }, { ...b, marginBps: ctx.config.CONTRACT_MARGIN_BPS, perSubtask: 4 });
+  });
+
+  // -------------------------------------------------------------- MCP (Streamable HTTP, stateless)
+  app.post("/mcp", async (req, reply) => {
+    const user = ctx.auth.userFromToken(sessionToken(req));
+    const server = buildMcpServer(ctx, user, publicUrl(req));
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+    reply.hijack();
+    reply.raw.on("close", () => { void transport.close(); void server.close(); });
+    await server.connect(transport);
+    await transport.handleRequest(req.raw, reply.raw, req.body);
+  });
+  app.get("/mcp", async (_req, reply) => reply.status(405).send({ error: "method_not_allowed", message: "Stateless MCP: POST JSON-RPC to /mcp." }));
+
+  // -------------------------------------------------------------- watchtower (public reads)
+  app.get("/watchtower", async () => ctx.watchtower.latest());
+  app.get("/watchtower/agents/:handle", async (req) => ctx.watchtower.lookup(params(req).handle));
+  app.get("/watchtower/evidence/:hash", async (req) => ctx.watchtower.evidence(params(req).hash));
+  app.post("/watchtower/scan", async (req) => {
+    requireUser(ctx, req);
+    const b = body(z.object({ limit: z.number().int().min(1).max(5000).optional() }), req);
+    return ctx.watchtower.scan({ limit: b.limit });
   });
 
   // -------------------------------------------------------------- treasury & guard

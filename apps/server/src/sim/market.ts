@@ -168,7 +168,8 @@ export class SimMarket {
         const q = (url.searchParams.get("q") ?? "").toLowerCase().split(/\W+/).filter((w) => w.length > 2);
         const cat = url.searchParams.get("category");
         const rows = SIM_AGENTS.filter((d) => (!cat || d.category === cat) && (!q.length || q.some((w) => `${d.name} ${d.description} ${d.tags.join(" ")}`.toLowerCase().includes(w))));
-        return json(200, { agents: rows.map((d) => this.card(d)) });
+        const offset = Number(url.searchParams.get("offset") ?? 0);
+        return json(200, { agents: rows.slice(offset, offset + Number(url.searchParams.get("limit") ?? 50)).map((d) => this.card(d)) });
       }
       let m = p.match(/^\/v1\/agents\/([^/]+)\/pricing-plans$/);
       if (m) {

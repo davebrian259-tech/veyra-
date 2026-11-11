@@ -44,6 +44,11 @@ export class Scheduler {
         for (const op of execution.pendingAgentOps()) await safe(`vault op ${op.id}`, async () => execution.applyStatus(op.id, await agents.api().getStatus(op.correlation_id!)));
       }
       if (this.tick % 60 === 0) await safe("anchor", () => receipts.anchorPending());
+      const hours = this.ctx.config.WATCHTOWER_INTERVAL_HOURS;
+      if (hours > 0) {
+        const last = this.ctx.db.get<{ started_at: string }>("SELECT started_at FROM watch_scans ORDER BY started_at DESC LIMIT 1");
+        if (!last || Date.now() - Date.parse(last.started_at) > hours * 3600_000) void this.ctx.watchtower.scan().catch(() => undefined);
+      }
     } finally {
       this.busy = false;
       this.lastRun = { at: new Date().toISOString(), errors };

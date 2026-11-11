@@ -16,7 +16,8 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "contracts:test": "cd contracts && cargo test",
-    "contracts:build": "./scripts/build-contracts.sh"
+    "contracts:build": "./scripts/build-contracts.sh",
+    "watchtower": "pnpm --filter @veyra/server watchtower"
   },
   "pnpm": {
     "overrides": {

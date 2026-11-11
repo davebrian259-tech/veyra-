@@ -37,6 +37,14 @@ export class MarketCatalog {
     return body.agents ?? [];
   }
 
+  async page(offset: number, limit = 50): Promise<MarketAgent[]> {
+    const u = new URL("/v1/agents", this.endpoints.origin);
+    u.searchParams.set("limit", String(limit));
+    u.searchParams.set("offset", String(offset));
+    const body = await this.get<{ agents: MarketAgent[] }>(u.toString());
+    return body.agents ?? [];
+  }
+
   agent(idOrHandle: string) {
     return this.get<MarketAgent>(new URL(`/v1/agents/${encodeURIComponent(idOrHandle)}`, this.endpoints.origin).toString());
   }

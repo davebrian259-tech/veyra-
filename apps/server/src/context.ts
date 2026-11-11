@@ -27,6 +27,7 @@ import { SIM_ENDPOINTS, SIM_USDC, SIM_WORKER_TOKEN, SimMarket } from "./sim/mark
 import { LiveChain, type Chain } from "./treasury/chain.js";
 import { SpendAccount } from "./treasury/spend-account.js";
 import { AgentApiVault, SimVault, Treasury, type Vault } from "./treasury/treasury.js";
+import { Watchtower, type ThreatReporter } from "./watchtower/scanner.js";
 
 export interface ContextOverrides {
   db?: Db;
@@ -136,6 +137,24 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
   }
   const receipts = new ReceiptService(db, secrets, anchorer);
 
+  // ---------------------------------------------------------------- threat reports (veyra-ledger `report`)
+  let reporter: ThreatReporter | null = null;
+  if (simChain) {
+    reporter = { target: "ledger.veyra.sim", report: async (subject, kind, evidenceHash) => simChain.record("ledger_report", { subject, kind, evidenceHash }) };
+  } else if (config.LEDGER_CONTRACT_ID) {
+    const ledgerRpc = config.LEDGER_NETWORK === "mainnet" ? mainnetRpc : new NearRpc("https://rpc.testnet.near.org", o.fetch);
+    reporter = {
+      target: `${config.LEDGER_CONTRACT_ID} (${config.LEDGER_NETWORK})`,
+      report: async (subject, kind, evidenceHash) => {
+        const signer = config.LEDGER_WRITER_ID && config.LEDGER_WRITER_KEY ? { accountId: config.LEDGER_WRITER_ID, keyPair: keyPairFrom(config.LEDGER_WRITER_KEY) } : spend.housekeepingSigner();
+        const r = await sendTransaction(ledgerRpc, signer.accountId, signer.keyPair, config.LEDGER_CONTRACT_ID!, [
+          actionCreators.functionCall("report", { subject, kind, evidence_hash: evidenceHash }, 30_000_000_000_000n, 0n),
+        ]);
+        return r.transaction.hash;
+      },
+    };
+  }
+
   // ---------------------------------------------------------------- the contractor
   const guard = new ContractorGuard(db);
   const brain = new ContractorBrain(ai);
@@ -143,6 +162,7 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
     ? new MarketWorker(SIM_ENDPOINTS.origin, SIM_WORKER_TOKEN, marketFetch)
     : config.MARKET_WORKER_TOKEN ? new MarketWorker(config.MARKET_ORIGIN, config.MARKET_WORKER_TOKEN, o.fetch) : null;
   const board = (): JobBoard | null => (simMarket ? simMarket.jobBoard(SIM_OWNER_ACCOUNT) : oauth.connected ? mcpBoard : null);
+  const watchtower = new Watchtower(db, catalog, x402, guard, receipts, reporter, endpoints.origin);
   const engine = new ContractorEngine({
     db, catalog, x402, board, worker: () => worker, treasury, guard, brain, receipts, audit, notifier,
     ownerUserId: () => ownerUser()?.id ?? null,
@@ -157,7 +177,7 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
 
   return {
     config, db, secrets, rpc, audit, notifier, tokens, auth, bodyguard, agents, execution, ai, nearAi,
-    catalog, x402, chain, spend, treasury, vault, oauth, mcpBoard, receipts, guard, brain, engine, worker,
+    catalog, x402, chain, spend, treasury, vault, oauth, mcpBoard, receipts, guard, brain, engine, worker, watchtower,
     sim: simChain && simMarket ? { chain: simChain, market: simMarket } : null,
     ownerUser,
   };

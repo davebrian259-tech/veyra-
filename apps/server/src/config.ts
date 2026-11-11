@@ -15,6 +15,8 @@ const schema = z.object({
   PORT: z.coerce.number().default(8787),
   HOST: z.string().default("0.0.0.0"),
   PUBLIC_WEB_ORIGIN: z.string().default("http://localhost:5173"),
+  /** Public base URL of this API (used in the agent card, KYA and MCP links). */
+  PUBLIC_API_URL: z.string().optional(),
   DATABASE_PATH: z.string().default("./data/veyra.db"),
   EVIDENCE_DIR: z.string().default("./data/evidence"),
 
@@ -80,6 +82,9 @@ const schema = z.object({
   // Policy vault (NEAR Intents Agent API agent)
   VAULT_AGENT_ID: z.string().optional(),
 
+  /** Hours between Watchtower scans of the whole market (0 = only on demand). */
+  WATCHTOWER_INTERVAL_HOURS: z.coerce.number().min(0).optional(),
+
   // Receipt anchoring
   LEDGER_CONTRACT_ID: z.string().optional(),
   LEDGER_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
@@ -91,7 +96,8 @@ const schema = z.object({
   MONITOR_INTERVAL_MS: z.coerce.number().default(5000),
 });
 
-export type Config = z.infer<typeof schema> & {
+export type Config = Omit<z.infer<typeof schema>, "WATCHTOWER_INTERVAL_HOURS"> & {
+  WATCHTOWER_INTERVAL_HOURS: number;
   nearRpcUrl: string;
   assumeCompromisedModel: boolean;
 };
@@ -101,6 +107,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   return {
     ...parsed,
     nearRpcUrl: parsed.NEAR_RPC_URL ?? `https://rpc.${parsed.NEAR_NETWORK}.near.org`,
+    // Live: scan the market every 6 h. Sim: on demand, so the attack lab shows payment-time defences.
+    WATCHTOWER_INTERVAL_HOURS: parsed.WATCHTOWER_INTERVAL_HOURS ?? (parsed.VEYRA_MODE === "live" ? 6 : 0),
     assumeCompromisedModel: parsed.ASSUME_COMPROMISED_MODEL ? ["1", "true"].includes(parsed.ASSUME_COMPROMISED_MODEL) : parsed.VEYRA_MODE === "sim",
   };
 }

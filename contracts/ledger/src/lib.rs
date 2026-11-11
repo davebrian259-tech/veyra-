@@ -11,7 +11,7 @@
 //! Events use NEP-297 (`standard: "veyra_ledger"`).
 
 use near_sdk::json_types::U64;
-use near_sdk::store::{LookupSet, Vector};
+use near_sdk::store::{LookupMap, LookupSet, Vector};
 use near_sdk::{env, near, require, AccountId, PanicOnDefault};
 
 #[near(serializers = [borsh, json])]
@@ -28,12 +28,29 @@ pub struct Anchor {
     pub timestamp_ns: U64,
 }
 
+/// A threat report about an agent-economy counterparty (e.g. a market handle that swapped its
+/// payee or poisoned a deliverable). The evidence itself stays off-chain; its hash and the
+/// Merkle root of the receipts that recorded it are committed here.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug)]
+pub struct Report {
+    pub index: U64,
+    pub subject: String,
+    pub kind: String,
+    pub evidence_hash: String,
+    pub reporter: AccountId,
+    pub block_height: U64,
+    pub timestamp_ns: U64,
+}
+
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
 pub struct Contract {
     owner: AccountId,
     writers: LookupSet<AccountId>,
     anchors: Vector<Anchor>,
+    reports: Vector<Report>,
+    reports_by_subject: LookupMap<String, Vec<u64>>,
 }
 
 fn is_hex64(s: &str) -> bool {
@@ -48,7 +65,7 @@ impl Contract {
         for a in writers {
             w.insert(a);
         }
-        Self { owner, writers: w, anchors: Vector::new(b"a") }
+        Self { owner, writers: w, anchors: Vector::new(b"a"), reports: Vector::new(b"r"), reports_by_subject: LookupMap::new(b"s") }
     }
 
     pub fn anchor(&mut self, root: String, from_seq: U64, to_seq: U64, count: u32) -> U64 {
@@ -82,6 +99,54 @@ impl Contract {
             })
         ));
         U64(index)
+    }
+
+    /// Files a threat report. Kinds are short slugs such as "payee_swap", "price_mismatch",
+    /// "prompt_injection", "no_show".
+    pub fn report(&mut self, subject: String, kind: String, evidence_hash: String) -> U64 {
+        let reporter = env::predecessor_account_id();
+        require!(self.writers.contains(&reporter), "not an authorised writer");
+        require!(!subject.is_empty() && subject.len() <= 128, "subject must be 1-128 chars");
+        require!(!kind.is_empty() && kind.len() <= 40 && kind.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'), "kind must be a lowercase slug");
+        require!(is_hex64(&evidence_hash), "evidence_hash must be 64 lowercase hex chars");
+        let index = self.reports.len() as u64;
+        self.reports.push(Report {
+            index: U64(index),
+            subject: subject.clone(),
+            kind: kind.clone(),
+            evidence_hash: evidence_hash.clone(),
+            reporter: reporter.clone(),
+            block_height: U64(env::block_height()),
+            timestamp_ns: U64(env::block_timestamp()),
+        });
+        let mut ids = self.reports_by_subject.get(&subject).cloned().unwrap_or_default();
+        ids.push(index);
+        self.reports_by_subject.insert(subject.clone(), ids);
+        env::log_str(&format!(
+            "EVENT_JSON:{}",
+            near_sdk::serde_json::json!({
+                "standard": "veyra_ledger", "version": "1.1.0", "event": "reported",
+                "data": [{ "index": U64(index), "subject": subject, "kind": kind, "evidence_hash": evidence_hash, "reporter": reporter }]
+            })
+        ));
+        U64(index)
+    }
+
+    pub fn reports_for(&self, subject: String) -> Vec<Report> {
+        self.reports_by_subject
+            .get(&subject)
+            .map(|ids| ids.iter().filter_map(|i| self.reports.get(*i as u32).cloned()).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn get_reports(&self, from_index: Option<U64>, limit: Option<u32>) -> Vec<Report> {
+        let from = from_index.map(|v| v.0 as u32).unwrap_or(0);
+        let limit = limit.unwrap_or(50).min(100);
+        (from..self.reports.len()).take(limit as usize).filter_map(|i| self.reports.get(i).cloned()).collect()
+    }
+
+    pub fn report_count(&self) -> u32 {
+        self.reports.len()
     }
 
     pub fn add_writer(&mut self, account_id: AccountId) {
@@ -180,6 +245,37 @@ mod tests {
         let mut c = setup();
         ctx("veyra.near");
         c.add_writer("mallory.near".parse().unwrap());
+    }
+
+    const EVIDENCE: &str = "1111111111111111111111111111111111111111111111111111111111111111";
+
+    #[test]
+    fn writers_file_reports_indexed_by_subject() {
+        let mut c = setup();
+        ctx("veyra.near");
+        c.report("payee-swapper".into(), "payee_swap".into(), EVIDENCE.into());
+        c.report("bait-switch".into(), "price_mismatch".into(), EVIDENCE.into());
+        c.report("payee-swapper".into(), "payee_swap".into(), EVIDENCE.into());
+        assert_eq!(c.report_count(), 3);
+        assert_eq!(c.reports_for("payee-swapper".into()).len(), 2);
+        assert_eq!(c.reports_for("honest-agent".into()).len(), 0);
+        assert_eq!(c.get_reports(Some(U64(1)), Some(5))[0].subject, "bait-switch");
+    }
+
+    #[test]
+    #[should_panic(expected = "not an authorised writer")]
+    fn strangers_cannot_report() {
+        let mut c = setup();
+        ctx("mallory.near");
+        c.report("honest-agent".into(), "payee_swap".into(), EVIDENCE.into());
+    }
+
+    #[test]
+    #[should_panic(expected = "lowercase slug")]
+    fn report_kind_is_validated() {
+        let mut c = setup();
+        ctx("veyra.near");
+        c.report("x".into(), "Bad Kind!".into(), EVIDENCE.into());
     }
 
     #[test]
