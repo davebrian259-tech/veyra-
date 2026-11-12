@@ -248,8 +248,14 @@ export function contractorRoutes(app: FastifyInstance, ctx: AppContext, schedule
 
   app.post("/guard/counterparties/:handle/block", async (req) => {
     const user = requireUser(ctx, req);
-    ctx.guard.record(params(req).handle, "attacks", `blocked by ${user.accountId}`);
-    return ctx.guard.counterparty(params(req).handle);
+    const b = body(z.object({ blocked: z.boolean().default(true) }), req);
+    const handle = params(req).handle;
+    if (b.blocked) ctx.guard.record(handle, "attacks", `blocked by ${user.accountId}`);
+    else {
+      ctx.db.run("UPDATE counterparties SET blocked = 0, note = ?, updated_at = ? WHERE handle = ?", [`unblocked by ${user.accountId}`, now(), handle]);
+      ctx.audit.record({ userId: user.id, actor: "user", action: "guard.counterparty.unblocked", subject: handle });
+    }
+    return ctx.guard.counterparty(handle);
   });
 
   // -------------------------------------------------------------- market

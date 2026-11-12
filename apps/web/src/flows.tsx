@@ -1,4 +1,5 @@
 import { post, type OwnerIntent, type WalletTx } from "./api";
+import { confirmBridge } from "./ui";
 import { connectedAccount, signAndSend, signMessage, signOwnerIntent } from "./wallet";
 
 /**
@@ -7,7 +8,8 @@ import { connectedAccount, signAndSend, signMessage, signOwnerIntent } from "./w
  */
 export async function signAndSubmitOwnerIntent(out: OwnerIntent) {
   const lines = [out.preview.summary, ...(out.policySummary ?? []), "", out.riskNotice].join("\n");
-  if (!window.confirm(`Authorise ${out.type}?\n\n${lines}`)) throw new Error("cancelled by owner");
+  const ok = await confirmBridge.ask({ title: `Sign ${out.type.replace(/_/g, " ")}?`, body: <pre>{lines}</pre>, confirmLabel: "Open wallet to sign" });
+  if (!ok) throw new Error("You cancelled before signing. Nothing was sent.");
   const signedData = await signOwnerIntent(out.intent);
   return post(`/owner-intents/${out.correlationId}/submit`, { signedData });
 }

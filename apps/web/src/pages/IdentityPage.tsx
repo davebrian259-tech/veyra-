@@ -1,111 +1,118 @@
 import { useEffect, useState } from "react";
-import { Copy01Icon, IdentityCardIcon } from "@hugeicons/core-free-icons";
-import { api, post } from "../api";
+import { useLocation } from "react-router";
+import { IdentityCardIcon } from "@hugeicons/core-free-icons";
+import { post } from "../api";
 import { Icon } from "../brand";
-import { signMessage } from "../wallet";
-import { Field, Json, Section, useRunner } from "../ui";
+import { invalidate, money, useApi } from "../lib/data";
+import { loadWallet, useSession } from "../shell/session";
+import { Button, Card, CopyButton, ErrorNote, Field, Json, Pill, Skeleton, Stat, useAction } from "../ui";
 
 /** Who Veyra is, how another agent hires it, and a free estimate for any job. */
-export function IdentityPage({ mode }: { mode: "sim" | "live" }) {
-  const r = useRunner();
-  const [kya, setKya] = useState<any>(null);
-  const [job, setJob] = useState({ title: "Competitor scan", brief: "Research competitors to NEAR Intents agent wallets and write a short report with a pricing table.", budget: "4" });
-  const [est, setEst] = useState<any>(null);
-  const [copied, setCopied] = useState<string | null>(null);
+export default function IdentityPage() {
+  const { config } = useSession();
+  const mode = config!.mode;
+  const kya = useApi<any>("/kya");
+  const { run, busy } = useAction();
+  const [verify, setVerify] = useState<any>(undefined);
+  const location = useLocation();
+  useEffect(() => { if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "smooth" }); }, [location.hash]);
 
-  const load = async () => setKya(await api("/kya"));
-  useEffect(() => void load(), []);
-
-  const apiUrl = kya?.credential.agent.endpoints.api ?? "http://localhost:8787";
+  if (kya.error) return <ErrorNote message={kya.error} retry={kya.reload} />;
+  if (!kya.data) return <Skeleton lines={8} height={22} />;
+  const c = kya.data.credential;
+  const apiUrl: string = c.agent.endpoints.api;
   const mcpCmd = `claude mcp add --transport http veyra ${apiUrl}/mcp`;
   const a2aCmd = `curl -s ${apiUrl}/a2a/v1 -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"SendMessage","params":{"message":{"parts":[{"text":"Research competitors to NEAR agent wallets and write a short report."}],"metadata":{"budgetUsd":4}}}}'`;
-  const c = kya?.credential;
-  const copy = async (key: string, text: string) => { await navigator.clipboard.writeText(text).catch(() => undefined); setCopied(key); setTimeout(() => setCopied(null), 1500); };
 
   return (
-    <>
-      <div className="split even">
-        <Section title="Know-your-agent credential" note="Signed with Veyra's receipt key. Anyone can recompute the hash and check the signature. The owner can countersign it with their NEAR wallet (NEP-413).">
-          {c && (
-            <dl className="kv">
-              <dt>Principal</dt><dd className="mono">{c.principal?.nearAccount ?? "—"}</dd>
-              <dt>Paid at</dt><dd className="mono">{c.controls.paidAt}</dd>
-              <dt>Pays only to</dt><dd>{c.controls.paysOnlyTo}</dd>
-              <dt>Mandate</dt><dd>v{c.controls.mandate.version} · largest job {c.controls.mandate.maxJobUsd} USDC · {c.controls.mandate.maxDailyUsd} USDC a day · margin {(c.controls.mandate.marginBps / 100).toFixed(1)}%</dd>
-              <dt>Working float</dt><dd>{c.controls.maxFloatUsdc} USDC</dd>
-              <dt>Ledger</dt><dd className="mono">{c.accountability.ledger.contractId ?? "not deployed"}</dd>
-              <dt>Credential hash</dt><dd className="mono small">{kya.hash}</dd>
-              <dt>Owner countersign</dt><dd>{kya.ownerAttestation ? <span className="pill good">signed by {kya.ownerAttestation.owner}</span> : <span className="pill">not yet</span>}</dd>
-            </dl>
-          )}
-          <div className="row">
-            <button onClick={() => r.run("Verifying", () => post("/kya/verify", { credential: kya.credential, hash: kya.hash, signature: kya.signature }))}><Icon icon={IdentityCardIcon} size={16} /> Verify signature</button>
-            {mode === "live" && <button className="btn-dark" onClick={() => r.run("Countersigning", async () => {
+    <div className="stack">
+      <div className="grid-2">
+        <Card title="Know-your-agent credential" note="Signed with Veyra's receipt key. Anyone can recompute the hash and check the signature. In live mode the owner countersigns it with their wallet.">
+          <dl className="kv">
+            <dt>Principal</dt><dd className="mono">{c.principal?.nearAccount ?? "—"}</dd>
+            <dt>Paid at</dt><dd className="mono">{c.controls.paidAt}</dd>
+            <dt>Pays only to</dt><dd>{c.controls.paysOnlyTo}</dd>
+            <dt>Mandate</dt><dd>v{c.controls.mandate.version} · largest job {c.controls.mandate.maxJobUsd} USDC · {c.controls.mandate.maxDailyUsd} USDC a day · margin {(c.controls.mandate.marginBps / 100).toFixed(1)}%</dd>
+            <dt>Working float</dt><dd>{c.controls.maxFloatUsdc} USDC</dd>
+            <dt>Ledger</dt><dd className="mono">{c.accountability.ledger.contractId ?? "not deployed"}</dd>
+            <dt>Credential hash</dt><dd className="mono small">{kya.data.hash}</dd>
+            <dt>Owner countersign</dt><dd>{kya.data.ownerAttestation ? <Pill tone="good">signed by {kya.data.ownerAttestation.owner}</Pill> : <Pill>not yet</Pill>}</dd>
+          </dl>
+          <div className="btn-row" style={{ marginTop: "var(--s-4)" }}>
+            <Button loading={busy === "verify"} onClick={() => run("verify", async () => setVerify(await post("/kya/verify", { credential: kya.data.credential, hash: kya.data.hash, signature: kya.data.signature })))}><Icon icon={IdentityCardIcon} size={16} /> Verify signature</Button>
+            {mode === "live" && <Button variant="primary" loading={busy === "sign"} onClick={() => run("sign", async () => {
               const ch = await post("/kya/challenge");
-              const signed = await signMessage(ch.message, ch.recipient, ch.nonce);
-              const x = await post("/kya/attest", { hash: ch.hash, signed });
-              await load();
-              return x;
-            })}>Countersign with wallet</button>}
-            <a className="btn-light" href="/api/.well-known/agent-card.json" target="_blank" rel="noreferrer">A2A agent card</a>
+              const w = await loadWallet();
+              const signed = await w.signMessage(ch.message, ch.recipient, ch.nonce);
+              await post("/kya/attest", { hash: ch.hash, signed });
+              invalidate("/kya"); await kya.reload();
+            }, { success: "Credential countersigned." })}>Countersign with wallet</Button>}
+            <a className="btn" href="/api/.well-known/agent-card.json" target="_blank" rel="noreferrer">A2A agent card</a>
           </div>
-        </Section>
+          {verify !== undefined && <div className={`alert ${verify.hashMatches && verify.signatureValid ? "good" : "bad"}`} style={{ marginTop: "var(--s-3)" }}>Hash {verify.hashMatches ? "matches" : "does not match"} · signature {verify.signatureValid ? "valid" : "invalid"}</div>}
+        </Card>
 
-        <Section title="Three ways to hire Veyra" note="Through the Agent Market listing, over A2A with an x402 cheque, or over MCP. The first two need no account with Veyra at all.">
-          <h4>1 · With a cheque (A2A + x402)</h4>
-          <p className="note">Send the job. The reply is a 402 naming the price and Veyra's spend account, the same payee published at <code>/.well-known/x402</code>. Resend it with an <code>X-PAYMENT</code> header carrying a NEP-366 cheque. The cheque is executed only when the job is delivered.</p>
-          <div className="codeline">
-            <code>{a2aCmd}</code>
-            <button aria-label="Copy" onClick={() => copy("a2a", a2aCmd)}><Icon icon={Copy01Icon} size={15} />{copied === "a2a" ? "Copied" : ""}</button>
+        <Card title="Three ways to hire Veyra" note="Through the Agent Market listing, over A2A with an x402 cheque, or from an MCP client. The first two need no account with Veyra.">
+          <div id="hire" className="stack">
+            <div>
+              <h3 style={{ fontSize: "var(--fs-md)" }}>1 · With a cheque (A2A + x402)</h3>
+              <p className="small muted" style={{ margin: "var(--s-1) 0 var(--s-2)" }}>Send the job. The reply is a 402 naming the price and Veyra's spend account, the same payee published at <code>/.well-known/x402</code>. Resend it with an <code>X-PAYMENT</code> header carrying a NEP-366 cheque. The cheque is executed only when the job is delivered.</p>
+              <div className="codeline"><code>{a2aCmd}</code><CopyButton text={a2aCmd} label="" /></div>
+            </div>
+            <div>
+              <h3 style={{ fontSize: "var(--fs-md)" }}>2 · From an MCP client</h3>
+              <div className="codeline" style={{ margin: "var(--s-2) 0" }}><code>{mcpCmd}</code><CopyButton text={mcpCmd} label="" /></div>
+              <ul className="small" style={{ margin: 0, paddingLeft: "1.2em", color: "var(--fg-2)" }}>
+                {[["veyra_estimate", "price a job with live quotes, free"], ["veyra_hire", "create a contract"], ["veyra_contract", "follow it and read the deliverable"], ["watchtower_check", "vet any market agent before paying it"], ["watchtower_proof", "prove a verdict against its anchored root"], ["market_analytics", "the market, measured"], ["verify_receipt", "audit a payment against its anchor"], ["veyra_mandate", "the owner's signed limits"], ["veyra_identity", "this credential"], ["veyra_ledger", "the public ledger"]].map(([n, d]) => <li key={n}><code>{n}</code> · {d}</li>)}
+              </ul>
+            </div>
+            <div>
+              <h3 style={{ fontSize: "var(--fs-md)" }}>3 · On the Agent Market</h3>
+              <p className="small muted" style={{ marginTop: "var(--s-1)" }}>{mode === "sim" ? "In the simulator, use Hire Veyra on the Business page." : "Hire the Veyra listing on market.near.ai; the market escrows the budget."}</p>
+            </div>
           </div>
-          <h4>2 · From an MCP client</h4>
-          <div className="codeline">
-            <code>{mcpCmd}</code>
-            <button aria-label="Copy" onClick={() => copy("mcp", mcpCmd)}><Icon icon={Copy01Icon} size={15} />{copied === "mcp" ? "Copied" : ""}</button>
-          </div>
-          <ul className="toollist">
-            {[["veyra_estimate", "price a job with live quotes, free"], ["veyra_hire", "create a contract"], ["veyra_contract", "follow it and read the deliverable"], ["watchtower_check", "vet any market agent before paying it"], ["watchtower_proof", "prove a verdict against its anchored root"], ["verify_receipt", "audit a payment against its anchor"], ["veyra_mandate", "the owner's signed limits"], ["veyra_identity", "this credential"], ["veyra_ledger", "the public ledger"]].map(([n, d]) => <li key={n}><code>{n}</code><span>{d}</span></li>)}
-          </ul>
-          <h4>3 · On the Agent Market</h4>
-          <p className="note">{mode === "sim" ? "In the simulator, use Hire Veyra on the Business page." : "Hire the Veyra listing on market.near.ai; the market escrows the budget."}</p>
-        </Section>
+        </Card>
       </div>
 
-      <Section title="Estimate a job" note="Plans the job, asks each candidate agent for a live x402 quote and runs GUARD on every quote. Nothing is signed or paid.">
-        <div className="row">
+      <Estimate />
+      <details className="disclosure"><summary>Raw credential</summary><Json value={kya.data} /></details>
+    </div>
+  );
+}
+
+function Estimate() {
+  const { run, busy } = useAction();
+  const [job, setJob] = useState({ title: "Competitor scan", brief: "Research competitors to NEAR Intents agent wallets and write a short report with a pricing table.", budget: "4" });
+  const [est, setEst] = useState<any>(null);
+  const budgetErr = job.budget && !(Number(job.budget) > 0) ? "Enter an amount above 0." : null;
+  return (
+    <Card title="Estimate a job" note="Plans the job, asks each candidate agent for a live x402 quote, and runs GUARD on every quote. Nothing is signed or paid.">
+      <div id="estimate" className="stack">
+        <div className="form-grid">
           <Field label="Title" value={job.title} onChange={(v) => setJob({ ...job, title: v })} />
-          <Field label="Budget (USDC)" value={job.budget} onChange={(v) => setJob({ ...job, budget: v })} />
+          <Field label="Budget (USDC)" value={job.budget} onChange={(v) => setJob({ ...job, budget: v })} inputMode="decimal" error={budgetErr} />
         </div>
-        <Field label="Brief" value={job.brief} onChange={(v) => setJob({ ...job, brief: v })} textarea />
-        <button className="btn-dark" disabled={r.busy !== null} onClick={async () => { const x = await r.run("Collecting quotes", () => post("/estimate", { title: job.title, brief: job.brief, budgetUsd: Number(job.budget) })); if (x) { setEst(x); r.setResult(undefined); } }}>Get estimate</button>
+        <Field label="Brief" value={job.brief} onChange={(v) => setJob({ ...job, brief: v })} textarea rows={3} />
+        <div className="btn-row"><Button variant="primary" loading={busy === "est"} disabled={Boolean(budgetErr) || !job.budget || job.brief.trim().length < 10} onClick={() => run("est", async () => setEst(await post("/estimate", { title: job.title, brief: job.brief, budgetUsd: Number(job.budget) })))}>Get estimate</Button></div>
         {est && (
           <>
             <div className="stats">
-              <div className="stat"><div className="stat-label">Budget</div><div className="stat-value">{est.budgetUsd.toFixed(2)}</div></div>
-              <div className="stat"><div className="stat-label">Subcontract envelope</div><div className="stat-value">{est.envelopeUsd.toFixed(2)}</div></div>
-              <div className="stat"><div className="stat-label">Estimated cost</div><div className="stat-value">{est.estimatedCostUsd.toFixed(2)}</div></div>
-              <div className="stat accent"><div className="stat-label">Estimated margin</div><div className="stat-value">{est.estimatedMarginUsd.toFixed(2)}</div></div>
+              <Stat label="Budget" value={money(est.budgetUsd)} />
+              <Stat label="Subcontract envelope" value={money(est.envelopeUsd)} />
+              <Stat label="Estimated cost" value={money(est.estimatedCostUsd)} />
+              <Stat label="Estimated margin" value={money(est.estimatedMarginUsd)} tone="accent" />
             </div>
             <div className="table-wrap">
               <table>
                 <thead><tr><th>Subtask</th><th className="num">Cap</th><th>Chosen</th><th>Candidates</th></tr></thead>
                 <tbody>
-                  {est.lines.map((l: any) => (
-                    <tr key={l.subtask}>
-                      <td>{l.subtask}</td>
-                      <td className="num mono">{l.capUsd.toFixed(2)}</td>
-                      <td>{l.chosen ? <><span className="mono">{l.chosen.handle}</span> <span className="note">{l.chosen.priceUsd.toFixed(2)}</span></> : <span className="pill warn">none within the cap</span>}</td>
-                      <td className="small">{l.candidates.map((x: any) => `${x.handle} ${x.quotedUsd === null ? "offline" : x.quotedUsd.toFixed(2)} → ${x.decision}`).join(" · ")}</td>
-                    </tr>
-                  ))}
+                  {est.lines.map((l: any) => <tr key={l.subtask}><td>{l.subtask}</td><td className="num mono">{money(l.capUsd)}</td><td>{l.chosen ? <><span className="mono">{l.chosen.handle}</span> <span className="small muted">{money(l.chosen.priceUsd)}</span></> : <Pill tone="warn">none within the cap</Pill>}</td><td className="small">{l.candidates.map((x: any) => `${x.handle} ${x.quotedUsd === null ? "offline" : money(x.quotedUsd)} → ${x.decision}`).join(" · ")}</td></tr>)}
                 </tbody>
               </table>
             </div>
           </>
         )}
-      </Section>
-      {r.view}
-      <details className="raw"><summary>Raw credential</summary><Json value={kya} /></details>
-    </>
+      </div>
+    </Card>
   );
 }

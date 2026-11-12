@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { useSession } from "../shell/session";
 import { AiSecurity01Icon, ArrowRight01Icon, ArrowUpRight01Icon, CheckmarkCircle02Icon, Github01Icon, Radar01Icon } from "@hugeicons/core-free-icons";
 import { api } from "../api";
 import { DotMatrix, IsoGuard, IsoMerkle, IsoPlug, IsoRadar, IsoTiers, WaveField, type DotKind } from "../art";
@@ -17,7 +19,17 @@ const STEPS = [
 
 const STACK = ["NEAR AI Agent Market", "NEAR Intents", "x402 · NEP-366", "NEAR AI Cloud", "NEP-413", "MCP", "A2A"];
 
-export function Landing({ mode, cta, ctaLabel, busy }: { mode: "sim" | "live" | null; cta: () => void; ctaLabel: string; busy?: boolean }) {
+export default function Landing() {
+  const { config, user, wallet, ready, busy, error, signIn } = useSession();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = params.get("next") ?? "/app";
+  const mode = config?.mode ?? null;
+  const ctaLabel = !ready ? "Loading…" : user ? "Open the console" : mode === "sim" ? "Enter the simulator" : wallet ? "Sign in with NEAR" : "Connect wallet";
+  const [wantIn, setWantIn] = useState(false);
+  const cta = () => { if (user) navigate(next); else { setWantIn(true); void signIn(); } };
+  useEffect(() => { if (user && (wantIn || params.get("next"))) navigate(next, { replace: true }); }, [user, wantIn, next, params, navigate]);
+  useEffect(() => { document.title = "Veyra · autonomous contractor on NEAR"; }, []);
   const [scan, setScan] = useState<{ total: number; ok: number; warn: number; flagged: number; offline: number; at: string; live: boolean } | null>(null);
 
   useEffect(() => {
@@ -34,15 +46,16 @@ export function Landing({ mode, cta, ctaLabel, busy }: { mode: "sim" | "live" | 
 
   return (
     <div className="landing">
-      <nav className="lnav">
-        <Wordmark />
+      {error && <div className="toast-top"><div className="alert bad" role="alert">{error}</div></div>}
+      <nav className="lnav" aria-label="Landing">
+        <Link to="/" className="wordmark" aria-label="Veyra home"><Wordmark /></Link>
         <div className="lnav-links">
           <a href="#how">How it works</a>
           <a href="#security">Controls</a>
           <a href="#watchtower">Watchtower</a>
           <a href="https://github.com/davebrian259-tech/veyra-" target="_blank" rel="noreferrer">GitHub</a>
         </div>
-        <button className="btn-dark" onClick={cta} disabled={busy}>{ctaLabel}</button>
+        <button className="btn primary" onClick={cta} disabled={!ready || busy}>{ctaLabel}</button>
       </nav>
 
       <header className="hero">
@@ -52,8 +65,8 @@ export function Landing({ mode, cta, ctaLabel, busy }: { mode: "sim" | "live" | 
           <h1>Hires agents.<br />Pays on delivery.<br />Proves it on NEAR.</h1>
           <p className="lede">Give Veyra a job and a budget. It hires the right agents, pays only for work that passes, and leaves a receipt for every cent.</p>
           <div className="row center">
-            <button className="btn-dark lg" onClick={cta} disabled={busy}>{ctaLabel} <Icon icon={ArrowRight01Icon} size={16} /></button>
-            <a className="btn-light lg" href="#watchtower">See the market scan <Icon icon={ArrowUpRight01Icon} size={16} /></a>
+            <button className="btn primary lg" onClick={cta} disabled={!ready || busy}>{ctaLabel} <Icon icon={ArrowRight01Icon} size={16} /></button>
+            <a className="btn lg" href="#watchtower">See the market scan <Icon icon={ArrowUpRight01Icon} size={16} /></a>
           </div>
         </div>
         <Mockup />
@@ -161,14 +174,15 @@ export function Landing({ mode, cta, ctaLabel, busy }: { mode: "sim" | "live" | 
         <Mark size={52} />
         <h2>Run the whole economy in your browser.</h2>
         <p>{mode === "sim" ? "No wallet. No keys. Hire Veyra, launch the attacks, audit the receipts." : "Connect a NEAR wallet to sign in. Veyra never sees your keys."}</p>
-        <button className="btn-light lg" onClick={cta} disabled={busy}>{ctaLabel} <Icon icon={ArrowRight01Icon} size={16} /></button>
+        <button className="btn lg" onClick={cta} disabled={!ready || busy}>{ctaLabel} <Icon icon={ArrowRight01Icon} size={16} /></button>
       </section>
 
       <footer className="lfoot">
-        <Wordmark size={22} />
+        <Link to="/" className="wordmark"><Wordmark size={22} /></Link>
         <span>An autonomous contractor on the NEAR AI Agent Market.</span>
         <span className="lfoot-links">
-          <a href="/api/.well-known/agent-card.json"><Icon icon={AiSecurity01Icon} size={14} /> Agent card</a>
+          <Link to="/app/evidence"><Icon icon={AiSecurity01Icon} size={14} /> Evidence</Link>
+          <a href="/api/.well-known/agent-card.json">Agent card</a>
           <a href="https://github.com/davebrian259-tech/veyra-" target="_blank" rel="noreferrer"><Icon icon={Github01Icon} size={14} /> Source</a>
         </span>
       </footer>
