@@ -22,6 +22,8 @@ const Arena = lazy(() => import("./game/Arena"));
 const RunPage = lazy(() => import("./game/RunPage"));
 const Leaderboard = lazy(() => import("./game/Leaderboard"));
 const Underwrite = lazy(() => import("./game/Underwrite"));
+const HowToPlay = lazy(() => import("./game/HowToPlay"));
+const Stats = lazy(() => import("./game/Stats"));
 
 function RequireUser() {
   const { user, ready, error } = useSession();
@@ -43,6 +45,8 @@ export function App() {
           <Route path="runs/:id" element={<RunPage />} />
           <Route path="leaderboard" element={<Leaderboard />} />
           <Route path="underwrite" element={<Underwrite />} />
+          <Route path="learn" element={<HowToPlay />} />
+          <Route path="stats" element={<Stats />} />
           <Route path="*" element={<Navigate to="/play" replace />} />
         </Route>
         <Route path="/app" element={<RequireUser />}>

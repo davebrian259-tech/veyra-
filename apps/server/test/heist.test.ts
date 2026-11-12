@@ -80,3 +80,28 @@ describe("Heist API", () => {
     expect(runs).toHaveLength(1);
   });
 });
+
+describe("Heist read endpoints for the game UI", () => {
+  it("previews without storing, profiles a player, and reports series", async () => {
+    const { app } = await buildApp(loadConfig({ NODE_ENV: "test", DATABASE_PATH: ":memory:", VEYRA_MODE: "sim" }));
+    const get = async (url: string) => JSON.parse((await app.inject({ method: "GET", url })).body);
+    const preview = JSON.parse((await app.inject({ method: "POST", url: "/heist/vaults/2/preview", payload: { spec: spec("bait") } })).body);
+    expect(preview.cracked).toBe(true);
+    expect((await get("/heist")).stats.runs).toBe(0); // a preview is not a run
+
+    await app.inject({ method: "POST", url: "/heist/vaults/1/practice", payload: { spec: spec("redirect") } });
+    await app.inject({ method: "POST", url: "/heist/vaults/2/practice", payload: { spec: spec("redirect") } });
+    const me = await get("/heist/players/tester");
+    expect(me.runs).toBe(2);
+    expect(me.cracked).toEqual([1]);
+    expect(me.agents[0].runs).toBe(2);
+    expect(me.lootAtomic).toBe("400000");
+
+    const s = await get("/heist/series");
+    expect(s.days.at(-1).runs).toBe(2);
+    expect(s.vaults.find((v: { vault: number }) => v.vault === 1).cracks).toBe(1);
+    expect(s.stoppers[0].shield).toBe("payee");
+    expect((await get("/heist/runs?kind=ranked")).runs).toHaveLength(0);
+    await app.close();
+  });
+});

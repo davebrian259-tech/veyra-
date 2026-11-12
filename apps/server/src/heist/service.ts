@@ -171,8 +171,12 @@ export class HeistService {
     };
   }
 
-  recent(limit = 30, vault?: number) {
-    const rows = this.db.all<RunRow>(`SELECT * FROM heist_runs ${vault ? "WHERE vault = ?" : ""} ORDER BY created_at DESC LIMIT ?`, vault ? [vault, limit] : [limit]);
+  recent(limit = 30, vault?: number, kind?: "practice" | "ranked") {
+    const where: string[] = [];
+    const args: (string | number)[] = [];
+    if (vault) { where.push("vault = ?"); args.push(vault); }
+    if (kind) { where.push("kind = ?"); args.push(kind); }
+    const rows = this.db.all<RunRow>(`SELECT * FROM heist_runs ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY created_at DESC LIMIT ?`, [...args, limit]);
     return rows.map((r) => ({ ...this.view(r), steps: undefined, spec: { agentName: parse<RogueSpec>(r.spec_json).agentName } }));
   }
 
@@ -200,6 +204,89 @@ export class HeistService {
   async stake(vault: number, account: string) {
     if (!this.contractId) return null;
     return this.rpc.view(this.contractId, "get_stake", { vault, account_id: account }).catch(() => null);
+  }
+
+  /** The referee's verdict for a spec without storing anything: the expected outcome of a ranked entry. */
+  async preview(vault: number, input: unknown) {
+    if (!vaultById(vault)) throw notFound("vault");
+    const spec = this.parseSpec(input);
+    const r = await runDuel(vault, spec);
+    return { vault, cracked: r.cracked, lootAtomic: r.lootAtomic, stoppedBy: r.stoppedBy, specHash: r.specHash, outcomeHash: r.outcomeHash, engine: r.engine };
+  }
+
+  /** Everything about one player (a callsign or a NEAR account): totals, cracked vaults, agents and recent runs. */
+  player(who: string) {
+    const rows = this.db.all<RunRow>("SELECT * FROM heist_runs WHERE callsign = ? OR account = ? ORDER BY created_at DESC LIMIT 200", [who, who]);
+    const cracked = [...new Set(rows.filter((r) => r.cracked).map((r) => r.vault))].sort();
+    const agents = new Map<string, { name: string; runs: number; cracks: number; bestVault: number; lootAtomic: bigint; lastRunId: string; lastAt: string }>();
+    for (const r of rows) {
+      const name = parse<RogueSpec>(r.spec_json).agentName;
+      const a = agents.get(name) ?? { name, runs: 0, cracks: 0, bestVault: 0, lootAtomic: 0n, lastRunId: r.id, lastAt: r.created_at };
+      a.runs += 1;
+      if (r.cracked) { a.cracks += 1; a.bestVault = Math.max(a.bestVault, r.vault); a.lootAtomic += BigInt(r.loot_atomic); }
+      agents.set(name, a);
+    }
+    const loot = rows.reduce((t, r) => t + (r.cracked ? BigInt(r.loot_atomic) : 0n), 0n);
+    return {
+      player: who,
+      runs: rows.length,
+      cracks: rows.filter((r) => r.cracked).length,
+      rankedRuns: rows.filter((r) => r.kind === "ranked").length,
+      cracked,
+      tried: [...new Set(rows.map((r) => r.vault))].sort(),
+      lootAtomic: loot.toString(),
+      agents: [...agents.values()].map((a) => ({ ...a, lootAtomic: a.lootAtomic.toString() })),
+      recent: rows.slice(0, 20).map((r) => ({ ...this.view(r), steps: undefined })),
+    };
+  }
+
+  /** A wallet's NEAR balance and its stake in every vault, read from the chain. */
+  async account(accountId: string) {
+    const acct = await this.rpc.viewAccount(accountId).catch((e) => {
+      if (/UNKNOWN_ACCOUNT|does not exist/.test(String(e))) return null;
+      throw e;
+    });
+    const stakes = this.contractId
+      ? await Promise.all(VAULTS.map(async (v) => ({ vault: v.id, stake: await this.rpc.view<{ epoch: number; amount: string; earned: string } | null>(this.contractId!, "get_stake", { vault: v.id, account_id: accountId }).catch(() => null) })))
+      : [];
+    const gas = await this.rpc.call<{ gas_price: string }>("gas_price", [null]).catch(() => ({ gas_price: "100000000" }));
+    return {
+      accountId,
+      exists: Boolean(acct),
+      gasPriceYocto: gas.gas_price,
+      balanceYocto: acct ? (BigInt(acct.amount)).toString() : "0",
+      lockedYocto: acct?.locked ?? "0",
+      storageBytes: acct?.storage_usage ?? 0,
+      stakes: stakes.filter((s) => s.stake && (BigInt(s.stake.amount) > 0n || BigInt(s.stake.earned) > 0n)).map((s) => ({ vault: s.vault, amountYocto: s.stake!.amount, earnedYocto: s.stake!.earned })),
+    };
+  }
+
+  /** Where a transaction stands on NEAR, and the entry it opened if it was an `enter`. */
+  async tx(hash: string, sender: string) {
+    const out = await this.rpc.txStatus(hash, sender, "NONE").catch(() => null);
+    if (!out || !out.transaction) return { hash, found: false, success: null, entryId: null, entry: null, link: this.explorer("txns", hash) };
+    const success = txSucceeded(out);
+    const isEnter = (out.transaction.actions as { FunctionCall?: { method_name: string } }[]).some((a) => a.FunctionCall?.method_name === "enter");
+    const entryId = isEnter && success ? lastSuccessValue<string>(out) : null;
+    const entry = entryId && this.contractId ? await this.rpc.view(this.contractId, "get_entry", { entry_id: String(entryId) }).catch(() => null) : null;
+    const run = entryId ? this.db.get<{ id: string }>("SELECT id FROM heist_runs WHERE entry_id = ?", [String(entryId)]) : undefined;
+    return { hash, found: true, success, entryId: entryId === null ? null : String(entryId), entry, runId: run?.id ?? null, link: this.explorer("txns", hash) };
+  }
+
+  /** Heists per day and per vault, crack rates, and loot over time, for the stats page. */
+  series(days = 14) {
+    const since = new Date(Date.now() - days * 86_400_000).toISOString();
+    const daily = this.db.all<{ day: string; runs: number; cracks: number; ranked: number; loot: number }>(`
+      SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS runs, SUM(cracked) AS cracks, SUM(CASE WHEN kind = 'ranked' THEN 1 ELSE 0 END) AS ranked,
+             SUM(CASE WHEN cracked = 1 THEN CAST(loot_atomic AS INTEGER) ELSE 0 END) AS loot
+      FROM heist_runs WHERE created_at >= ? GROUP BY day ORDER BY day`, [since]);
+    const byVault = this.db.all<{ vault: number; runs: number; cracks: number }>("SELECT vault, COUNT(*) AS runs, SUM(cracked) AS cracks FROM heist_runs GROUP BY vault");
+    const stoppers = this.db.all<{ shield: string; n: number }>("SELECT stopped_by AS shield, COUNT(*) AS n FROM heist_runs WHERE cracked = 0 AND stopped_by IS NOT NULL GROUP BY stopped_by ORDER BY n DESC");
+    return {
+      days: daily.map((d) => ({ day: d.day, runs: d.runs, cracks: d.cracks ?? 0, held: d.runs - (d.cracks ?? 0), ranked: d.ranked, lootAtomic: String(d.loot ?? 0) })),
+      vaults: VAULTS.map((v) => { const x = byVault.find((b) => b.vault === v.id); return { vault: v.id, name: v.name, runs: x?.runs ?? 0, cracks: x?.cracks ?? 0 }; }),
+      stoppers: stoppers.map((s) => ({ shield: s.shield, name: SHIELDS[s.shield as keyof typeof SHIELDS]?.name ?? s.shield, held: s.n })),
+    };
   }
 
   stats() {

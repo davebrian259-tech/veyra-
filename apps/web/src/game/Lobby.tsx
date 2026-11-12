@@ -1,104 +1,96 @@
-import { Link, useOutletContext } from "react-router";
+import { useEffect } from "react";
+import { Link } from "react-router";
 import { motion } from "motion/react";
-import { ArrowRight01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, ArrowUpRight01Icon, BookOpen01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "../brand";
-import type { useApi } from "../lib/data";
-import { useApi as useData, when } from "../lib/data";
-import { Empty, ErrorNote, Skeleton } from "../ui";
-import { RogueAvatar, ShieldToken, TONES, VaultEmblem } from "./art";
-import { ALL_SHIELDS, loadProgress, near, usdc, type Lobby as LobbyData, type Run, type Vault } from "./heist-api";
+import { ErrorNote, Skeleton } from "../ui";
+import { Activity } from "./Activity";
+import { ShieldToken, TONES, VaultEmblem } from "./art";
+import { FAUCET_URL } from "./errors";
+import { Explain, Ticker } from "./explain";
+import { QuestAction } from "./GameShell";
+import { ALL_SHIELDS, nearNum, type Shield, type Vault } from "./heist-api";
+import { quests } from "./quests";
+import { useHeist } from "./session";
+import { startTour, tourSeen } from "./tour";
 
-type LobbyCtx = ReturnType<typeof useApi<LobbyData>>;
-
-/** The lobby: the richest vault up front, all five in a row, your progress, and the latest runs. */
+/** The lobby: your next target up front, the five vaults, your objectives, and live heists. */
 export default function Lobby() {
-  const lobby = useOutletContext<LobbyCtx>();
-  const runs = useData<{ runs: Run[] }>("/heist/runs?limit=8", { every: 10_000 });
-  const progress = loadProgress();
-  if (lobby.error) return <ErrorNote message={lobby.error} retry={lobby.reload} />;
+  const h = useHeist();
+  const { lobby, cracked } = h;
+  useEffect(() => { document.title = "Vaults · Veyra Heist"; }, []);
+  useEffect(() => {
+    if (!lobby.data || tourSeen("lobby")) return;
+    const t = setTimeout(() => void startTour("lobby"), 700);
+    return () => clearTimeout(t);
+  }, [lobby.data]);
+  if (lobby.error && !lobby.data) return <ErrorNote message={lobby.error} retry={lobby.reload} />;
   if (!lobby.data) return <Skeleton lines={8} height={28} />;
   const { vaults, stats, ranked } = lobby.data;
-  const pot = (v: Vault) => (v.chain ? BigInt(v.chain.potYocto) : 0n);
-  const featured = [...vaults].sort((a, b) => (pot(b) > pot(a) ? 1 : pot(b) < pot(a) ? -1 : b.id - a.id))[0];
+  const nextId = [1, 2, 3, 4, 5].find((v) => !cracked.includes(v)) ?? 5;
+  const featured = vaults.find((v) => v.id === nextId) ?? vaults[0];
   const t = TONES[featured.tone];
+  const fresh = cracked.length === 0;
+  const shields = [...new Map(vaults.flatMap((v) => v.shields).map((s) => [s.id, s])).values()];
 
   return (
     <div className="lobby-grid">
       <div className="stack-lg">
-        <motion.section className="panel feature" style={{ ["--glow" as string]: t.glow }} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} aria-labelledby="feature-title">
+        <div className="page-head">
+          <h1>Vaults</h1>
+          <p>Pick a vault, build a rogue agent, and try to take what Veyra holds. Practice is free; ranked plays for the real pot.</p>
+        </div>
+
+        <motion.section className="panel feature" data-tour="featured" style={{ ["--glow" as string]: t.glow }} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} aria-labelledby="feature-title">
           <div style={{ position: "relative" }}>
             <div className="chip-row">
-              <span className="chip">Vault {featured.id}</span>
-              <span className="chip">{featured.shields.length} shields up</span>
-              {ranked.enabled && <span className="chip gold">Biggest pot</span>}
+              <span className="chip">{fresh ? "Start here" : "Your next target"}</span>
+              <span className="chip">Vault {featured.id} · {featured.shields.length} shields up</span>
             </div>
             <h2 id="feature-title">{featured.name}</h2>
-            <p>{featured.tagline} Build a rogue agent, get past its shields, and take what it holds.</p>
+            <p>{featured.tagline} <span className="muted">Hint: {featured.hint}</span></p>
+            {ranked.enabled && featured.chain && (
+              <div className="cta-row">
+                <Explain title={`Vault ${featured.id} pot`} what="Real testnet NEAR held by the Heist contract. Crack this vault in a ranked heist and the contract pays all of it to your wallet." how={<>Seeded by the house, plus 70% of every failed entry fee, plus backers' stakes ({nearNum(featured.chain.stakedYocto).toFixed(2)} NEAR right now). Read from NEAR every 10 seconds.</>}>
+                  <span className="pot"><b><Ticker value={nearNum(featured.chain.potYocto)} /></b><span>NEAR in the pot</span></span>
+                </Explain>
+              </div>
+            )}
             <div className="cta-row">
-              {ranked.enabled && featured.chain && <span className="pot"><b>{near(featured.chain.potYocto)}</b><span>NEAR in the pot</span></span>}
-            </div>
-            <div className="cta-row">
-              <Link className="btn primary big" to={`/play/vault/${featured.id}`}>Break in <Icon icon={ArrowRight01Icon} size={18} /></Link>
-              <Link className="btn big" to="/play/vault/1">Start at vault 1</Link>
+              <Link className="btn primary big" to={`/play/vault/${featured.id}${fresh ? "?move=redirect" : ""}`}>{fresh ? "Start your first heist" : "Break in"} <Icon icon={ArrowRight01Icon} size={18} /></Link>
+              <Link className="btn big" to="/play/learn"><Icon icon={BookOpen01Icon} size={18} /> How to play</Link>
             </div>
           </div>
           <VaultEmblem id={featured.id} tone={featured.tone} shields={featured.shields.length} size={220} />
         </motion.section>
 
-        <section aria-labelledby="vaults-title">
-          <div className="panel-head"><h2 id="vaults-title" style={{ fontSize: "var(--fs-lg)" }}>The five vaults</h2><span className="link">Each one switches on more of Veyra's defences</span></div>
+        <section aria-labelledby="vaults-title" data-tour="vaults">
+          <div className="section-head"><h2 id="vaults-title">The five vaults</h2><span className="muted small">Each one switches on more of Veyra's defences. Keys 1 to 5 jump straight in.</span></div>
           <div className="vault-row">
-            {vaults.map((v, i) => <VaultCard key={v.id} v={v} cracked={progress.cracked.includes(v.id)} index={i} ranked={ranked.enabled} />)}
+            {vaults.map((v, i) => <VaultCard key={v.id} v={v} cracked={cracked.includes(v.id)} next={v.id === nextId} index={i} ranked={ranked.enabled} />)}
           </div>
         </section>
 
-        <section className="panel" aria-labelledby="history-title">
-          <div className="panel-head"><h2 id="history-title">Latest heists</h2><Link to="/play/leaderboard">Leaderboard</Link></div>
-          {runs.loading && !runs.data && <Skeleton lines={4} />}
-          {runs.data && !runs.data.runs.length && <Empty title="No heists yet">Be the first. Vault 1 falls to a single move.</Empty>}
-          {runs.data && runs.data.runs.length > 0 && (
-            <div className="table-wrap">
-              <table className="history">
-                <thead><tr><th>Player</th><th>Vault</th><th>Result</th><th className="num">Loot</th><th className="hide-sm">When</th></tr></thead>
-                <tbody>
-                  {runs.data.runs.map((r) => (
-                    <tr key={r.id}>
-                      <td><Link to={`/play/runs/${r.id}`} className="who"><RogueAvatar seed={r.spec.agentName} size={28} /><span>{r.account ?? r.callsign}</span></Link></td>
-                      <td>{r.vault}{r.kind === "ranked" ? <span className="chip gold" style={{ marginLeft: 6 }}>ranked</span> : null}</td>
-                      <td><span className={`pill ${r.cracked ? "warn" : ""}`}>{r.cracked ? "cracked" : "held"}</span></td>
-                      <td className="num mono">{r.cracked ? usdc(r.lootAtomic) : "—"}</td>
-                      <td className="small hide-sm" style={{ whiteSpace: "nowrap" }}>{when(r.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+        <Activity />
       </div>
 
       <aside className="stack-lg" aria-label="Your progress">
-        <section className="panel ring-card">
-          <div className="panel-head"><h2>Your climb</h2><span className="link">{progress.cracked.length} of 5</span></div>
-          <ProgressRing cracked={progress.cracked} vaults={vaults} />
-          <div className="mini-stats">
-            <div><b>{stats.runs}</b><span>heists</span></div>
-            <div><b>{stats.cracks}</b><span>cracks</span></div>
-            <div><b>{stats.players}</b><span>players</span></div>
-          </div>
-        </section>
+        <QuestPanel />
         <section className="panel">
-          <div className="panel-head"><h2>The shields</h2></div>
-          <p className="small muted" style={{ marginBottom: "var(--s-3)" }}>Every vault shows which of Veyra's defences are on. A shield that is off is a way in.</p>
-          <div className="shield-row" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 0, ["--tone-a" as string]: "var(--fg-2)" }}>
-            {ALL_SHIELDS.map((s) => <ShieldToken key={s.id} id={s.id} on label={s.short} />)}
+          <div className="panel-head"><h2>The shields</h2><span className="link">{stats.runs} heists · {stats.cracks} cracks · {stats.players} players</span></div>
+          <p className="small muted" style={{ marginBottom: "var(--s-3)" }}>Every vault shows which of Veyra's defences are on. A shield that is off is a way in. Tap one to see what it stops.</p>
+          <div className="shield-grid">
+            {shields.map((s) => <ShieldExplain key={s.id} s={s} />)}
           </div>
         </section>
-        {ranked.enabled && ranked.explorer && (
+        {ranked.enabled && (
           <section className="panel">
-            <div className="panel-head"><h2>Real pots</h2></div>
-            <p className="small muted">Ranked runs pay a small fee in testnet NEAR into the vault's pot. Crack it and the contract pays the whole pot to your wallet.</p>
-            <div className="cta-row" style={{ marginTop: "var(--s-3)" }}><a className="btn sm" href={ranked.explorer} target="_blank" rel="noreferrer">See the pot contract</a><Link className="btn sm" to="/play/underwrite">Back a vault</Link></div>
+            <div className="panel-head"><h2>Real pots, free money</h2></div>
+            <p className="small muted">Ranked heists pay a small entry fee in <b>testnet NEAR</b>, which is free. Crack the vault and the contract pays you the whole pot.</p>
+            <div className="cta-row" style={{ marginTop: "var(--s-3)" }}>
+              {ranked.network === "testnet" && <a className="btn sm" href={FAUCET_URL} target="_blank" rel="noreferrer">Get testnet NEAR <Icon icon={ArrowUpRight01Icon} size={12} /></a>}
+              {ranked.explorer && <a className="btn sm" href={ranked.explorer} target="_blank" rel="noreferrer">The pot contract <Icon icon={ArrowUpRight01Icon} size={12} /></a>}
+            </div>
           </section>
         )}
       </aside>
@@ -106,42 +98,60 @@ export default function Lobby() {
   );
 }
 
-function VaultCard({ v, cracked, index, ranked }: { v: Vault; cracked: boolean; index: number; ranked: boolean }) {
+export function ShieldExplain({ s, on = true, hit }: { s: Shield; on?: boolean; hit?: boolean }) {
+  return (
+    <Explain title={`${s.name}${on ? "" : " (off)"}`} what={s.what} how={<>Blocks: {s.rules.map((r) => r.replace(/_/g, " ")).join(", ")}.{on ? "" : " This vault leaves it off: that is a hole."}</>} className="shield-explain">
+      <ShieldToken id={s.id} on={on} label={ALL_SHIELDS.find((x) => x.id === s.id)?.short ?? s.name} hit={hit} />
+    </Explain>
+  );
+}
+
+/** Objectives from real state, with the one to do now on top. */
+export function QuestPanel() {
+  const h = useHeist();
+  const qs = quests({ lobby: h.lobby.data, me: h.me, cracked: h.cracked, account: h.account, acct: h.acct, rankedEnabled: h.rankedEnabled });
+  const done = qs.filter((q) => q.done).length;
+  const current = qs.find((q) => !q.done);
+  return (
+    <section className="panel quests" aria-labelledby="quests-title" data-tour="quests">
+      <div className="panel-head"><h2 id="quests-title">Objectives</h2><span className="link">{done} of {qs.length}</span></div>
+      <div className="quest-bar" role="progressbar" aria-valuemin={0} aria-valuemax={qs.length} aria-valuenow={done} aria-label="Objectives done"><i style={{ width: `${(done / qs.length) * 100}%` }} /></div>
+      {current ? (
+        <div className="quest-now">
+          <span className="ns-k">Now</span>
+          <h3>{current.title}{current.progress && <span className="mono muted"> {current.progress.n}/{current.progress.of}</span>}</h3>
+          <p className="small muted">{current.why}</p>
+          <QuestAction q={current} />
+        </div>
+      ) : <p className="small">Every objective done. Vault 5 is still standing.</p>}
+      <ol className="quest-list">
+        {qs.map((q) => (
+          <li key={q.id} className={q.done ? "done" : q === current ? "now" : ""}>
+            <span className="q-dot" aria-hidden="true">{q.done && <Icon icon={CheckmarkCircle02Icon} size={14} />}</span>
+            <span>{q.title}</span>
+            <span className="sr-only">{q.done ? " (done)" : q === current ? " (current)" : ""}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function VaultCard({ v, cracked, next, index, ranked }: { v: Vault; cracked: boolean; next: boolean; index: number; ranked: boolean }) {
   const t = TONES[v.tone];
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 * index }} style={{ display: "flex" }}>
-      <Link to={`/play/vault/${v.id}`} className="vault-card" style={{ ["--glow" as string]: t.glow, width: "100%" }} aria-label={`Vault ${v.id}, ${v.name}${cracked ? ", cracked by you" : ""}`}>
+      <Link to={`/play/vault/${v.id}`} className={`vault-card ${next ? "is-next" : ""}`} style={{ ["--glow" as string]: t.glow, ["--tone-a" as string]: t.a, width: "100%" }} aria-label={`Vault ${v.id}, ${v.name}${cracked ? ", cracked by you" : next ? ", your next target" : ""}`}>
         <span className="badge-num">0{v.id}</span>
-        {cracked && <span className="badge-cracked chip gold"><Icon icon={CheckmarkCircle02Icon} size={14} /> Cracked</span>}
+        {cracked ? <span className="badge-state chip gold"><Icon icon={CheckmarkCircle02Icon} size={14} /> Cracked</span> : next ? <span className="badge-state chip next">Next</span> : null}
         <div className="art"><VaultEmblem id={v.id} tone={v.tone} shields={v.shields.length} size={130} cracked={cracked} /></div>
         <h3>{v.name}</h3>
         <p className="tag">{v.tagline}</p>
         <div className="meta">
-          {ranked && v.chain ? <span><b>{near(v.chain.potYocto)}</b> NEAR in the pot</span> : <span>{v.shields.length} shields up</span>}
-          <span>{v.feeNear} NEAR to enter ranked</span>
+          {ranked && v.chain ? <span><b>{nearNum(v.chain.potYocto).toFixed(2)}</b> NEAR in the pot</span> : <span>{v.shields.length} shields up</span>}
+          <span>{v.feeNear} NEAR to enter ranked · {v.shields.length} shields</span>
         </div>
       </Link>
     </motion.div>
-  );
-}
-
-function ProgressRing({ cracked, vaults }: { cracked: number[]; vaults: Vault[] }) {
-  const r = 84;
-  const c = 2 * Math.PI * r;
-  const seg = c / 5;
-  return (
-    <>
-      <div className="ring" role="img" aria-label={`${cracked.length} of 5 vaults cracked`}>
-        <svg viewBox="0 0 200 200" width="200" height="200">
-          {vaults.map((v, i) => (
-            <circle key={v.id} cx="100" cy="100" r={r} fill="none" strokeWidth="14" strokeLinecap="round"
-              stroke={cracked.includes(v.id) ? TONES[v.tone].a : "var(--line-2)"}
-              strokeDasharray={`${seg - 10} ${c - seg + 10}`} strokeDashoffset={-i * seg} transform="rotate(-90 100 100)" />
-          ))}
-        </svg>
-        <div className="ring-label"><small>vaults cracked</small><b>{cracked.length}/5</b></div>
-      </div>
-      <div className="tone-dots">{vaults.map((v) => <i key={v.id} className={cracked.includes(v.id) ? "on" : ""} style={cracked.includes(v.id) ? { background: TONES[v.tone].a } : undefined} />)}</div>
-    </>
   );
 }

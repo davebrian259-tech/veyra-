@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "radix-ui";
+import { toast as sonner, Toaster } from "sonner";
 import { Alert02Icon, Cancel01Icon, CheckmarkCircle02Icon, Copy01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "./brand";
 import { describeError } from "./lib/data";
@@ -165,32 +166,30 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
 }
 
 /* ------------------------------------------------------------------ toasts */
-interface Toast { id: number; text: string; tone?: "bad" }
-const ToastCtx = createContext<{ show: (text: string, tone?: "bad") => void }>({ show: () => undefined });
-export const useToast = () => useContext(ToastCtx);
+/** One toast system everywhere: sonner, themed by the page (light console, dark arena). */
+const toastApi = { show: (text: string, tone?: "bad") => { if (tone === "bad") sonner.error(text, { duration: 9000 }); else sonner(text); } };
+export const useToast = () => toastApi;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<Toast[]>([]);
-  const n = useRef(0);
-  const show = useCallback((text: string, tone?: "bad") => {
-    const id = ++n.current;
-    setItems((xs) => [...xs, { id, text, tone }]);
-    setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), tone === "bad" ? 9000 : 4000);
-  }, []);
-  const value = useMemo(() => ({ show }), [show]);
   return (
-    <ToastCtx.Provider value={value}>
+    <>
       {children}
-      <div className="toaster" aria-live="polite" aria-atomic="false">
-        {items.map((t) => (
-          <div key={t.id} className={`toast ${t.tone ?? ""}`} role={t.tone === "bad" ? "alert" : "status"}>
-            <span style={{ flex: 1, whiteSpace: "pre-wrap" }}>{t.text}</span>
-            <button className="btn ghost sm icon" aria-label="Dismiss" onClick={() => setItems((xs) => xs.filter((x) => x.id !== t.id))}><Icon icon={Cancel01Icon} size={14} /></button>
-          </div>
-        ))}
-      </div>
-    </ToastCtx.Provider>
+      <ThemedToaster />
+    </>
   );
+}
+
+function ThemedToaster() {
+  const [theme, setTheme] = useState<"light" | "dark">(() => (typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"));
+  useEffect(() => {
+    const el = document.documentElement;
+    const read = () => setTheme(el.getAttribute("data-theme") === "dark" || (!el.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light");
+    read();
+    const mo = new MutationObserver(read);
+    mo.observe(el, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => mo.disconnect();
+  }, []);
+  return <Toaster theme={theme} position="bottom-right" closeButton toastOptions={{ className: "vtoast" }} offset={{ bottom: 24 }} mobileOffset={{ bottom: 84 }} />;
 }
 
 /* ------------------------------------------------------------------ confirm dialog */

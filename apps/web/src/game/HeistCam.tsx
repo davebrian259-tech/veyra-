@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Link } from "react-router";
 import { CopyButton } from "../ui";
-import { usdc, type Run, type Step } from "./heist-api";
+import { Ticker } from "./explain";
+import { type Run, type Step } from "./heist-api";
 
 const ROUND_NAMES = ["", "The job", "The ask", "The cheque", "The drop", "The whisper"];
 const WHO: Record<Step["actor"], string> = { veyra: "VY", you: "YOU", shield: "SH", chain: "⛓" };
@@ -11,17 +12,17 @@ const WHO: Record<Step["actor"], string> = { veyra: "VY", you: "YOU", shield: "S
  * Replays a duel beat by beat. `instant` shows everything at once (deep links, reduced motion).
  * Calls `onBeat` with each step as it appears, so the stage can flash the shield that fired.
  */
-export function HeistCam({ run, instant, onBeat }: { run: Run; instant?: boolean; onBeat?: (s: Step) => void }) {
+export function HeistCam({ run, instant, onBeat, onDone }: { run: Run; instant?: boolean; onBeat?: (s: Step) => void; onDone?: (r: Run) => void }) {
   const [shown, setShown] = useState(instant ? run.steps.length : 0);
   useEffect(() => {
     setShown(instant ? run.steps.length : 0);
-    if (instant) return;
+    if (instant || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setShown(run.steps.length); return; }
     let i = 0;
     const t = setInterval(() => {
       i += 1;
       setShown(i);
       onBeat?.(run.steps[i - 1]);
-      if (i >= run.steps.length) clearInterval(t);
+      if (i >= run.steps.length) { clearInterval(t); onDone?.(run); }
     }, 520);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -47,7 +48,7 @@ export function HeistCam({ run, instant, onBeat }: { run: Run; instant?: boolean
       {done && (
         <motion.div className={`verdict ${run.cracked ? "won" : "lost"}`} initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 20 }}>
           {run.cracked ? (
-            <><h3>Vault {run.vault} cracked</h3><p className="loot">+{usdc(run.lootAtomic)} USDC</p><p>{run.kind === "ranked" ? "The pot contract paid you. Check your wallet." : "Practice run. Play ranked to take the real pot."}</p></>
+            <><h3>Vault {run.vault} cracked</h3><p className="loot">+<Ticker value={Number(run.lootAtomic) / 1e6} /> USDC</p><p>{run.kind === "ranked" ? "The pot contract paid you. Check your wallet." : "Practice run. Play ranked to take the real pot."}</p></>
           ) : (
             <><h3>Vault {run.vault} holds</h3><p>{run.stoppedBy ? `Stopped by ${run.steps.find((s) => s.shield === run.stoppedBy && s.tone === "blocked")?.title.replace(/ blocks$/, "") ?? run.stoppedBy}.` : "You took nothing this time."} Change one thing and go again.</p></>
           )}
@@ -56,6 +57,7 @@ export function HeistCam({ run, instant, onBeat }: { run: Run; instant?: boolean
             {run.links.resolve && <a href={run.links.resolve} target="_blank" rel="noreferrer">settled on NEAR</a>}
             <Link to={`/play/runs/${run.id}`}>Replay and share</Link>
             <CopyButton text={`${window.location.origin}/play/runs/${run.id}`} label="Copy link" />
+            <a href={`https://x.com/intent/post?text=${encodeURIComponent(run.cracked ? `I cracked vault ${run.vault} in Veyra Heist on @NEARProtocol. Your move.` : `Vault ${run.vault} held against my rogue agent in Veyra Heist on @NEARProtocol.`)}&url=${encodeURIComponent(`${window.location.origin}/play/runs/${run.id}`)}`} target="_blank" rel="noreferrer">Share on X</a>
           </div>
         </motion.div>
       )}

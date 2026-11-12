@@ -15,8 +15,8 @@ export function heistRoutes(app: FastifyInstance, ctx: AppContext) {
   }));
   app.get("/heist/leaderboard", async (req) => ({ players: H.leaderboard(query(z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) }), req).limit) }));
   app.get("/heist/runs", async (req) => {
-    const q = query(z.object({ vault: z.coerce.number().int().min(1).max(5).optional(), limit: z.coerce.number().int().min(1).max(100).default(30) }), req);
-    return { runs: H.recent(q.limit, q.vault) };
+    const q = query(z.object({ vault: z.coerce.number().int().min(1).max(5).optional(), kind: z.enum(["practice", "ranked"]).optional(), limit: z.coerce.number().int().min(1).max(100).default(30) }), req);
+    return { runs: H.recent(q.limit, q.vault, q.kind) };
   });
   app.get("/heist/runs/:id", async (req) => H.get(params(req).id));
   app.get("/heist/runs/:id/replay", async (req) => H.replay(params(req).id));
@@ -29,6 +29,14 @@ export function heistRoutes(app: FastifyInstance, ctx: AppContext) {
     H.limit(req.ip);
     const b = body(z.object({ txHash: z.string().min(20).max(80), accountId: z.string().min(2).max(64), spec: z.unknown() }), req);
     return H.ranked(b);
+  });
+  app.get("/heist/series", async () => H.series());
+  app.get("/heist/players/:who", async (req) => H.player(z.string().min(1).max(64).parse(params(req).who)));
+  app.get("/heist/accounts/:account", async (req) => H.account(z.string().regex(/^[a-z0-9._-]{2,64}$/).parse(params(req).account)));
+  app.get("/heist/tx/:hash", async (req) => H.tx(z.string().min(20).max(80).parse(params(req).hash), z.string().regex(/^[a-z0-9._-]{2,64}$/).parse(query(z.object({ sender: z.string() }), req).sender)));
+  app.post("/heist/vaults/:vault/preview", async (req) => {
+    H.limit(req.ip);
+    return H.preview(Number(params(req).vault), (req.body as { spec?: unknown } | undefined)?.spec);
   });
   app.get("/heist/stakes/:vault/:account", async (req) => ({ stake: await H.stake(Number(params(req).vault), params(req).account) }));
 }
