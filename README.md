@@ -184,9 +184,10 @@ Copy `apps/server/.env.example` to `apps/server/.env` and set `VEYRA_MODE=live` 
 
 ## Deploy
 
-The console runs on Cloudflare Pages; the server runs on a machine you control, reached
-through a Cloudflare Tunnel, with a Pages Function proxying `/api/*`. Both are free. Steps are
-in [docs/DEPLOY.md](docs/DEPLOY.md). `Dockerfile` builds the server for Fly.io, Railway or a VPS.
+The console runs on Cloudflare Pages, deployed from GitHub in the dashboard. The server runs
+on a machine you control, reached through a Cloudflare Tunnel, with a Pages Function proxying
+`/api/*`. Both are free. The dashboard steps are in [docs/DEPLOY.md](docs/DEPLOY.md).
+`Dockerfile` builds the server for Fly.io, Railway or a VPS.
 
 ## Repository
 

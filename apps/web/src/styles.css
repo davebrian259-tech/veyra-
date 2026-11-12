@@ -51,7 +51,7 @@ code, .mono { font-family: var(--mono); font-size: 0.88em; }
 .busy::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 8px; animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.25; } }
 .mark { flex: none; display: block; }
-.wordmark { display: inline-flex; align-items: center; gap: 9px; font-weight: 650; letter-spacing: -0.04em; }
+.wordmark { display: inline-flex; align-items: center; gap: 4px; font-weight: 650; letter-spacing: -0.04em; }
 
 /* ---------------------------------------------------------------- buttons & inputs */
 button, .btn-dark, .btn-light {

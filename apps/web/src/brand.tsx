@@ -1,26 +1,41 @@
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
 /**
- * The Veyra mark: a typographic V with stroke contrast (a heavy left arm, a hairline right arm)
- * set on a superellipse. The contrast gives it a voice; the superellipse keeps it soft. It is
- * one path in one colour and still reads at 16 pixels.
+ * The Veyra mark: two blades meeting at a point, each cut into two facets so the form reads as
+ * folded metal without a gradient. The split at the vertex is deliberate: two parties, one
+ * settlement. It is drawn in the current colour; `tile` sets it on a superellipse for app
+ * icons and the favicon, where it needs more mass at 16 pixels.
  */
-const TILE = "M16 1C27.5 1 31 4.5 31 16s-3.5 15-15 15S1 27.5 1 16 4.5 1 16 1z";
-const V = "M7.2 8.5h5.2l4.6 11.2L22.9 8.5h2.6L17.6 25h-3z";
+const BLADES = [
+  { outer: "M5 9 30 58 24 33z", inner: "M5 9 24 33 12 16z" },
+  { outer: "M59 9 34 58 40 33z", inner: "M59 9 40 33 52 16z" },
+];
+const TILE_BLADES = [
+  { outer: "M12 15 31 52 26 34z", inner: "M12 15 26 34 17 21z" },
+  { outer: "M52 15 33 52 38 34z", inner: "M52 15 38 34 47 21z" },
+];
+const TILE = "M32 2c23 0 30 7 30 30s-7 30-30 30S2 55 2 32 9 2 32 2z";
 
-export function Mark({ size = 28, tile = true }: { size?: number; tile?: boolean }) {
+export function Mark({ size = 28, tile = false }: { size?: number; tile?: boolean }) {
+  const blades = tile ? TILE_BLADES : BLADES;
+  const fill = tile ? "var(--mark-cut, var(--bg))" : "currentColor";
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" className="mark">
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" className="mark">
       {tile && <path d={TILE} fill="currentColor" />}
-      <path d={V} fill={tile ? "var(--mark-cut, var(--bg))" : "currentColor"} />
+      {blades.map((b, i) => (
+        <g key={i} fill={fill}>
+          <path d={b.outer} />
+          <path d={b.inner} opacity={0.5} />
+        </g>
+      ))}
     </svg>
   );
 }
 
 export function Wordmark({ size = 26 }: { size?: number }) {
   return (
-    <span className="wordmark" style={{ fontSize: size * 0.74 }}>
-      <Mark size={size} />
+    <span className="wordmark" style={{ fontSize: size * 0.78 }}>
+      <Mark size={size * 1.15} />
       <span>veyra</span>
     </span>
   );

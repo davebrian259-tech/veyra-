@@ -1,118 +1,97 @@
-# Deploying Veyra
+# Deploying Veyra from the Cloudflare dashboard
 
-Veyra has two parts. The console is static files and runs on Cloudflare Pages for free. The
-server is a long-running Node process with a SQLite database and a scheduler, so it cannot run
-inside a Cloudflare Worker. Run it on a machine you control and reach it through a Cloudflare
-Tunnel, which is also free. The Pages Function at `apps/web/functions/api/[[path]].ts` proxies
-`/api/*` to the server, so the browser talks to one origin and the session cookie stays
-first-party.
+Veyra has two parts.
+
+- **The console** is static files. It runs on Cloudflare Pages, free, deployed from GitHub.
+- **The server** is a Node process with a SQLite database and a scheduler. It cannot run inside
+  a Cloudflare Worker, so it runs on your machine (WSL) and Cloudflare reaches it through a
+  Cloudflare Tunnel, also free. A Pages Function in the repo proxies `/api/*` to the tunnel, so
+  the browser talks to one origin and the session cookie stays first-party.
 
 ```
-browser ── https://veyra.pages.dev ──▶ Cloudflare Pages (static console)
-                                        └─ /api/* ──▶ Pages Function ──▶ API_ORIGIN
-                                                                           │
-                                     https://api.<your-domain> (Cloudflare Tunnel)
-                                                                           │
-                                                          your machine: pnpm dev:server
+browser ──▶ https://veyra.pages.dev  (Pages: static console + /api proxy)
+                                     └──▶ API_ORIGIN = https://api.<your-domain>  (Tunnel)
+                                                                     └──▶ WSL: pnpm dev:server on :8787
 ```
 
-## 1. The server, on your machine, behind a tunnel
+Everything below is done in the browser except two pasted commands: starting the server and
+installing the tunnel connector.
 
-Install cloudflared on WSL, log in, and create a tunnel:
+## Part 1: the server on WSL
+
+1. In WSL, from the repository root, start the server and leave the terminal open:
 
 ```bash
-curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+cd apps/server && cp -n .env.example .env; pnpm dev
 ```
 
-```bash
-echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" | sudo tee /etc/apt/sources.list.d/cloudflared.list && sudo apt-get update && sudo apt-get install -y cloudflared
-```
+2. Check it answers: open http://localhost:8787/config in Windows. You should see JSON with
+   `"mode": "sim"`.
 
-```bash
-cloudflared tunnel login
-```
+## Part 2: the tunnel (Cloudflare dashboard)
 
-```bash
-cloudflared tunnel create veyra
-```
+1. Go to **dash.cloudflare.com** → **Zero Trust** (left menu). The first visit asks you to pick
+   a team name and the **Free** plan.
+2. **Networks → Tunnels → Create a tunnel → Cloudflared**. Name it `veyra`. Save.
+3. On the **Install and run a connector** page, choose **Debian / 64-bit**. Copy the single
+   command it shows (it starts with `curl -L --output cloudflared.deb …` and ends with
+   `cloudflared service install <token>`). Paste it into a second WSL terminal. The page shows
+   the connector as **Connected** within a minute.
+4. **Next** → **Public hostname**:
+   - **Subdomain:** `api`. **Domain:** pick one of yours. If you have none, buy or transfer one
+     under **Domain Registration**, or use a free quick tunnel (step 6).
+   - **Type:** `HTTP`. **URL:** `localhost:8787`.
+   - Save the tunnel.
+5. Open `https://api.<your-domain>/config` in a browser. The same JSON as before means the
+   tunnel works. That URL is your **API_ORIGIN**.
+6. No domain? Run `cloudflared tunnel --url http://localhost:8787` in WSL instead of steps
+   2–4. It prints a temporary `https://….trycloudflare.com` URL. Use that as `API_ORIGIN`; it
+   changes each time you restart it.
 
-Point a hostname at it (needs a domain on Cloudflare; a free one from the dashboard works):
+## Part 3: the console on Pages (Cloudflare dashboard)
 
-```bash
-cloudflared tunnel route dns veyra api.yourdomain.com
-```
+1. **Workers & Pages → Create → Pages → Connect to Git**. Authorise GitHub and choose the
+   `veyra-` repository.
+2. **Set up builds and deployments**:
+   - **Production branch:** `claude/ecstatic-allen-5p20bs` (or `main` once merged).
+   - **Framework preset:** None.
+   - **Build command:** `pnpm install && pnpm build`
+   - **Build output directory:** `dist`
+   - **Root directory (advanced):** `apps/web`
+   - **Environment variables (advanced):** add
+     - `NODE_VERSION` = `22`
+     - `SKIP_DEPENDENCY_INSTALL` = `true`
+     - `API_ORIGIN` = the URL from Part 2, for example `https://api.yourdomain.com`
+3. **Save and Deploy**. The first build takes two to three minutes. The site is at
+   `https://veyra-<something>.pages.dev`; rename the project under **Settings** if you like.
+4. Open the site. The landing page loads from Pages; **Enter the simulator** calls
+   `/api/sim/session`, which the Pages Function forwards to your tunnel. The dot matrix shows
+   your server's latest Watchtower scan once one has run.
 
-Create `~/.cloudflared/config.yml`:
+Every push to the production branch redeploys the console. The server picks up changes when
+you restart `pnpm dev`.
 
-```yaml
-tunnel: veyra
-credentials-file: /home/<you>/.cloudflared/<tunnel-id>.json
-ingress:
-  - hostname: api.yourdomain.com
-    service: http://localhost:8787
-  - service: http_status:404
-```
+## Part 4: make the server public-ready
 
-Start the server and the tunnel in two terminals:
+Set these in `apps/server/.env`, then restart `pnpm dev`:
 
-```bash
-cd apps/server && cp .env.example .env && PUBLIC_API_URL=https://api.yourdomain.com PUBLIC_WEB_ORIGIN=https://veyra.pages.dev pnpm dev
-```
-
-```bash
-cloudflared tunnel run veyra
-```
-
-Without a domain, a quick tunnel gives a temporary `trycloudflare.com` URL:
-
-```bash
-cloudflared tunnel --url http://localhost:8787
-```
-
-Set these in `apps/server/.env` for a public deployment:
-
-- `VEYRA_ENCRYPTION_KEY`: 32 random bytes as hex. Required outside development.
-- `PUBLIC_API_URL`: the tunnel hostname, so the KYA credential and agent card name the right endpoints.
+- `VEYRA_ENCRYPTION_KEY`: 32 random bytes as hex. Generate one in WSL with
+  `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+- `PUBLIC_API_URL`: the API URL from Part 2, so the KYA credential and agent card name the
+  public endpoints.
 - `PUBLIC_WEB_ORIGIN`: the Pages URL, for CORS on direct API calls.
-- `NODE_ENV=production`: makes the session cookie `Secure`.
+- `NODE_ENV=production`: makes the session cookie `Secure`. The dev command still works.
 
-## 2. The console, on Cloudflare Pages
-
-Build and deploy from `apps/web`:
-
-```bash
-pnpm --filter @veyra/web build
-```
-
-```bash
-cd apps/web && pnpm dlx wrangler login
-```
-
-```bash
-pnpm dlx wrangler pages deploy dist --project-name veyra
-```
-
-Then set `API_ORIGIN` to the tunnel URL in the Pages project (Settings → Variables and
-secrets), or from the terminal:
-
-```bash
-pnpm dlx wrangler pages secret put API_ORIGIN --project-name veyra
-```
-
-Redeploy after changing it. For continuous deployment, connect the GitHub repository in the
-Pages dashboard with build command `pnpm --filter @veyra/web build` and output directory
-`apps/web/dist`; `wrangler.jsonc` carries the rest.
-
-## 3. Alternatives for the server
-
-`Dockerfile` at the repository root builds the server image. It runs on Fly.io, Railway,
-Render or any VPS with a persistent volume at `/data`. Put the Pages Function's `API_ORIGIN`
-at that URL instead of the tunnel.
-
-## What to check after deploying
+## What to check
 
 - `https://<pages>/api/config` returns the mode and integrations.
-- `https://<pages>/api/.well-known/agent-card.json` names `PUBLIC_API_URL` endpoints.
-- Sign in from the console. In live mode the wallet signs a NEP-413 message; the cookie is set
-  by the proxied response.
-- `claude mcp add --transport http veyra https://api.yourdomain.com/mcp` from any machine.
+- `https://<pages>/api/.well-known/agent-card.json` names your public API URL.
+- `claude mcp add --transport http veyra https://api.<your-domain>/mcp` works from any machine.
+- In the Pages dashboard, **Functions** shows invocations for `/api/*`.
+
+## Alternatives
+
+- Terminal deploy of the console: `pnpm deploy:web` (uses Wrangler; log in once with
+  `pnpm --filter @veyra/web exec wrangler login`).
+- Hosting the server elsewhere: `Dockerfile` at the repository root builds it for Fly.io,
+  Railway, Render or a VPS. Mount a volume at `/data` and point `API_ORIGIN` at that host.

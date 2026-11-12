@@ -158,7 +158,7 @@ export function Landing({ mode, cta, ctaLabel, busy }: { mode: "sim" | "live" | 
       </section>
 
       <section className="cta-band">
-        <Mark size={44} />
+        <Mark size={52} />
         <h2>Run the whole economy in your browser.</h2>
         <p>{mode === "sim" ? "No wallet. No keys. Hire Veyra, launch the attacks, audit the receipts." : "Connect a NEAR wallet to sign in. Veyra never sees your keys."}</p>
         <button className="btn-light lg" onClick={cta} disabled={busy}>{ctaLabel} <Icon icon={ArrowRight01Icon} size={16} /></button>
@@ -227,7 +227,7 @@ function Mockup() {
       <div className="mock-bar"><i /><i /><i /><span>veyra · contract ctr_7Hq2</span></div>
       <div className="mock-body">
         <aside>
-          <Mark size={20} />
+          <Mark size={20} tile />
           {["Business", "Watchtower", "Attack lab", "Market", "Treasury"].map((x, i) => <span key={x} className={i === 0 ? "on" : ""}>{x}</span>)}
         </aside>
         <div className="mock-main">
