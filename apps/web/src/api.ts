@@ -13,7 +13,16 @@ export async function api<T = any>(path: string, init: { method?: string; body?:
     credentials: "same-origin",
   });
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    // An HTML page instead of JSON: a host or proxy answered, not the Veyra server.
+    const why = res.status === 502 || res.status === 503 || res.status === 504
+      ? "The Veyra server is not running or is still starting."
+      : "Something other than the Veyra server answered.";
+    throw new ApiError(res.status, "server_unreachable", `${why} (HTTP ${res.status} on ${path}.) If it is hosted on Render, open the service and check that the latest deploy says Live; a free instance can take a minute to wake up.`);
+  }
   if (!res.ok) throw new ApiError(res.status, data?.error ?? "error", data?.message ?? res.statusText, data?.details ?? data?.issues);
   return data as T;
 }
