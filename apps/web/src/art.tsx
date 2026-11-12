@@ -121,9 +121,15 @@ export function DotMatrix({ counts, cols = 32 }: { counts: Record<DotKind, numbe
   const dots = order.flatMap((k) => Array.from({ length: counts[k] ?? 0 }, () => k));
   const rows = Math.ceil(dots.length / cols) || 1;
   const gap = 10;
+  const r = 3;
+  // One path per kind keeps the DOM small (4 nodes for 667 agents) and the animation cheap.
+  const paths = order.map((k) => ({
+    k,
+    d: dots.map((kind, i) => (kind === k ? `M${(i % cols) * gap + gap / 2 - r} ${Math.floor(i / cols) * gap + gap / 2}a${r} ${r} 0 1 0 ${r * 2} 0a${r} ${r} 0 1 0 -${r * 2} 0` : "")).join(""),
+  }));
   return (
     <svg className="dotmatrix" style={{ maxWidth: cols * 16 }} viewBox={`0 0 ${cols * gap} ${rows * gap}`} role="img" aria-label={`${dots.length} agents: ${order.map((k) => `${counts[k] ?? 0} ${k}`).join(", ")}`}>
-      {dots.map((k, i) => <circle key={i} cx={(i % cols) * gap + gap / 2} cy={Math.floor(i / cols) * gap + gap / 2} r={3} className={`dot-${k}`} />)}
+      {paths.map((p) => p.d && <path key={p.k} d={p.d} className={`dot-${p.k}`} />)}
     </svg>
   );
 }

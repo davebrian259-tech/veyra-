@@ -58,7 +58,7 @@ export default function ContractPage() {
                 <Pill tone={statusTone(s.status)}>{s.status}</Pill> {s.title}
                 <span className="small muted"> · cap {usd(s.cap_atomic)} · {s.agent_handle ? `${s.agent_handle} at ${usd(s.price_atomic)}` : "unassigned"} · {s.mode}</span>
               </summary>
-              <h4 style={{ margin: "var(--s-3) 0 var(--s-2)" }}>Quotes and decisions</h4>
+              <h3 className="small" style={{ margin: "var(--s-3) 0 var(--s-2)", fontSize: "var(--fs-sm)" }}>Quotes and decisions</h3>
               <div className="table-wrap">
                 <table>
                   <thead><tr><th>Agent</th><th className="num">Quoted</th><th className="num">Listed</th><th className="num">Trust</th><th>Decision</th><th>Why</th></tr></thead>
@@ -72,8 +72,8 @@ export default function ContractPage() {
                   </tbody>
                 </table>
               </div>
-              {s.verification && <><h4 style={{ margin: "var(--s-3) 0 var(--s-2)" }}>Verification</h4><Json value={{ pass: s.verification.pass, score: s.verification.score, reasons: s.verification.reasons, checks: s.verification.checks, judge: s.verification.judge }} /></>}
-              <h4 style={{ margin: "var(--s-3) 0 var(--s-2)" }}>Brief sent to the agent</h4>
+              {s.verification && <><h3 className="small" style={{ margin: "var(--s-3) 0 var(--s-2)", fontSize: "var(--fs-sm)" }}>Verification</h3><Json value={{ pass: s.verification.pass, score: s.verification.score, reasons: s.verification.reasons, checks: s.verification.checks, judge: s.verification.judge }} /></>}
+              <h3 className="small" style={{ margin: "var(--s-3) 0 var(--s-2)", fontSize: "var(--fs-sm)" }}>Brief sent to the agent</h3>
               <pre className="json">{s.spec}</pre>
             </details>
           ))}

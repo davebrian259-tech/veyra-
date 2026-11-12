@@ -144,7 +144,7 @@ export default function Landing() {
           {STEPS.map((s) => (
             <li key={s.n}>
               <span className="step-n">{s.n}</span>
-              <div><h4>{s.t}</h4><p>{s.d}</p></div>
+              <div><h3>{s.t}</h3><p>{s.d}</p></div>
             </li>
           ))}
         </ol>

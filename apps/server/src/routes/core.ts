@@ -36,7 +36,8 @@ export function coreRoutes(app: FastifyInstance, ctx: AppContext, scheduler: Sch
     return { ok: true };
   });
 
-  app.get("/auth/me", async (req) => ({ user: requireUser(ctx, req) }));
+  /** 200 with a null user when nobody is signed in, so the console can check quietly. */
+  app.get("/auth/me", async (req) => ({ user: ctx.auth.userFromToken(sessionToken(req)) ?? null }));
 
   // -------------------------------------------------------------- audit & notifications
   app.get("/audit", async (req) => {
