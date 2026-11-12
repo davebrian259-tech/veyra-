@@ -12,7 +12,9 @@
     "demo": "tsx src/cli/demo.ts",
     "live:dry-run": "tsx --env-file-if-exists=.env src/cli/live-dry-run.ts",
     "watchtower": "tsx src/cli/watchtower.ts",
-    "deploy:ledger": "tsx --env-file-if-exists=.env src/cli/deploy-ledger.ts"
+    "deploy:ledger": "tsx --env-file-if-exists=.env src/cli/deploy-ledger.ts",
+    "heist:replay": "tsx src/cli/heist-replay.ts",
+    "deploy:heist": "tsx --env-file-if-exists=.env src/cli/deploy-heist.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",

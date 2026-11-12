@@ -30,6 +30,7 @@ import { AgentApiVault, SimVault, Treasury, type Vault } from "./treasury/treasu
 import { Watchtower, type ThreatReporter } from "./watchtower/scanner.js";
 import { MandateService } from "./contractor/mandate.js";
 import { X402Seller } from "./contractor/seller.js";
+import { HeistService } from "./heist/service.js";
 
 export interface ContextOverrides {
   db?: Db;
@@ -188,6 +189,7 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
     windowSeconds: config.SELLER_SLA_SECONDS + 600, minPriceAtomic: BigInt(Math.round(config.SELLER_MIN_USDC * 1e6)),
   });
   engineDeps.sales = seller;
+  const heist = new HeistService(db, receipts, config, o.fetch);
 
   if (simMarket) {
     // Seed the owner's market balance so job-board awards work offline.
@@ -197,7 +199,7 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
 
   return {
     config, db, secrets, rpc, audit, notifier, tokens, auth, bodyguard, agents, execution, ai, nearAi,
-    catalog, x402, chain, spend, treasury, vault, oauth, mcpBoard, receipts, guard, brain, engine, worker, watchtower, mandate, seller, ledger,
+    catalog, x402, chain, spend, treasury, vault, oauth, mcpBoard, receipts, guard, brain, engine, worker, watchtower, mandate, seller, ledger, heist,
     sim: simChain && simMarket ? { chain: simChain, market: simMarket } : null,
     ownerUser,
   };

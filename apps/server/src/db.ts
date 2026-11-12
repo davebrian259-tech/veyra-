@@ -398,6 +398,31 @@ const MIGRATIONS: string[] = [
   ALTER TABLE watch_scans ADD COLUMN root TEXT;
   ALTER TABLE watch_scans ADD COLUMN receipt_id TEXT;
   `,
+  `
+  -- Veyra Heist: every duel, practice or ranked, with its spec and the referee's outcome.
+  CREATE TABLE heist_runs (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    vault INTEGER NOT NULL,
+    callsign TEXT NOT NULL,
+    account TEXT,
+    spec_json TEXT NOT NULL,
+    spec_hash TEXT NOT NULL,
+    engine TEXT NOT NULL,
+    cracked INTEGER NOT NULL,
+    loot_atomic TEXT NOT NULL,
+    stopped_by TEXT,
+    steps_json TEXT NOT NULL,
+    outcome_hash TEXT NOT NULL,
+    entry_id TEXT UNIQUE,
+    enter_tx TEXT,
+    resolve_tx TEXT,
+    receipt_id TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX heist_runs_vault ON heist_runs(vault, created_at);
+  CREATE INDEX heist_runs_player ON heist_runs(callsign, account);
+  `,
 ];
 
 export type Row = Record<string, unknown>;

@@ -8,6 +8,7 @@ import { HttpError } from "./lib/errors.js";
 import { agentRoutes } from "./routes/agents.js";
 import { coreRoutes } from "./routes/core.js";
 import { contractorRoutes } from "./routes/contractor.js";
+import { heistRoutes } from "./routes/heist.js";
 import { Scheduler } from "./scheduler.js";
 
 export async function buildApp(config: Config, overrides: ContextOverrides = {}) {
@@ -32,6 +33,7 @@ export async function buildApp(config: Config, overrides: ContextOverrides = {})
   coreRoutes(app, ctx, scheduler);
   agentRoutes(app, ctx);
   contractorRoutes(app, ctx, scheduler);
+  heistRoutes(app, ctx);
   app.addHook("onClose", async () => {
     scheduler.stop();
   });

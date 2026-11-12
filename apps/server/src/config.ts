@@ -99,6 +99,14 @@ const schema = z.object({
   LEDGER_WRITER_ID: z.string().optional(),
   LEDGER_WRITER_KEY: z.string().optional(),
 
+  /** Veyra Heist: the pot contract on NEAR (testnet by default) and the referee that settles runs. */
+  HEIST_CONTRACT_ID: z.string().optional(),
+  HEIST_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
+  HEIST_REFEREE_ID: z.string().optional(),
+  HEIST_REFEREE_KEY: z.string().optional(),
+  /** Practice runs per minute per visitor. */
+  HEIST_RATE_PER_MIN: z.coerce.number().int().min(1).default(30),
+
   /** Background monitor interval. */
   MONITOR_INTERVAL_MS: z.coerce.number().default(5000),
 });
@@ -135,5 +143,6 @@ export function publicConfig(c: Config) {
       nearAiCloud: { configured: Boolean(c.NEAR_AI_API_KEY), model: c.NEAR_AI_MODEL },
       ledger: { contractId: c.LEDGER_CONTRACT_ID ?? null, network: c.LEDGER_NETWORK, simulated: c.VEYRA_MODE === "sim" && !c.LEDGER_CONTRACT_ID },
     },
+    heist: { contractId: c.HEIST_CONTRACT_ID ?? null, network: c.HEIST_NETWORK, ranked: Boolean(c.HEIST_CONTRACT_ID && (c.HEIST_REFEREE_KEY || c.LEDGER_WRITER_KEY)) },
   };
 }
