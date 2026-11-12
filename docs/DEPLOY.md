@@ -62,7 +62,8 @@ after that takes about a minute to wake it. Everyone after that is instant.
    |---|---|
    | `API_ORIGIN` | the server address from Part 1, for example `https://veyra-server-abcd.onrender.com` |
 
-   No `https://` missing, no slash at the end.
+   Include `https://` and leave off any slash at the end. Type can be **Text** or
+   **Secret**; both work.
 6. Click **Save and Deploy**. The build takes two to three minutes. When it finishes,
    Cloudflare shows the site address, something like `https://veyra-abc.pages.dev`. Copy it.
    This is the **console address**.
@@ -98,6 +99,10 @@ The server signs an identity document that names its own address. Give it the re
 - **The build on Cloudflare fails.** Open the failed deployment and read the last lines.
   The usual cause is a typo in *Root directory* (`apps/web`) or *Build command*
   (`pnpm build`). Fix it under **Settings → Builds & deployments** and click **Retry**.
+- **The variables page says "Only Secrets can be managed via the Dashboard".** The project
+  was built from an older version of the repository that contained a Wrangler file. Add
+  `API_ORIGIN` with type **Secret**; it works the same way. Builds from the current
+  branch no longer show this message.
 - **The page loads but "Enter the simulator" shows an error.** `API_ORIGIN` is wrong or the
   server is still waking up. Check **Settings → Environment variables** on the Pages project.
   After changing a variable, go to **Deployments** and **Retry** the latest one.
@@ -116,7 +121,6 @@ except `API_ORIGIN`.
 
 ## For reference
 
-- Console build settings are also stored in `apps/web/wrangler.jsonc`.
 - The forwarder from `/api/*` to the server is `apps/web/functions/api/[[path]].ts`.
 - The server image is built from `Dockerfile` in the repository root; `render.yaml`
   describes the Render service.

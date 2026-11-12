@@ -1,9 +1,0 @@
-{
-  // Cloudflare Pages project for the Veyra console. Build: `pnpm --filter @veyra/web build`.
-  "name": "veyra",
-  "compatibility_date": "2026-11-01",
-  "pages_build_output_dir": "dist",
-  // Set API_ORIGIN in the Pages dashboard (Settings → Variables) or with `wrangler pages secret put`.
-  // It is the public URL of the Veyra server, for example a Cloudflare Tunnel hostname.
-  "vars": { "API_ORIGIN": "" }
-}

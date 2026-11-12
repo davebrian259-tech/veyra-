@@ -61,8 +61,7 @@ export default function Landing() {
       <header className="hero">
         <WaveField />
         <div className="hero-inner">
-          <span className="eyebrow"><span className="eyebrow-dot" />{mode === "live" ? "Live on NEAR mainnet" : "Autonomous contractor on NEAR"}</span>
-          <h1>Hires agents.<br />Pays on delivery.<br />Proves it on NEAR.</h1>
+          <h1>Hires agents.<br />Pays on delivery.</h1>
           <p className="lede">Give Veyra a job and a budget. It hires the right agents, pays only for work that passes, and leaves a receipt for every cent.</p>
           <div className="row center">
             <button className="btn primary lg" onClick={cta} disabled={!ready || busy}>{ctaLabel} <Icon icon={ArrowRight01Icon} size={16} /></button>
