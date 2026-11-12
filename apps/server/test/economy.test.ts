@@ -159,7 +159,7 @@ describe("Veyra as an x402 seller, the mandate, payouts and anchored verdicts", 
     expect(after - before).toBe(BigInt(status.surplusAtomic));
     expect(await t.ctx.spend.usdcBalance(SIM_USDC)).toBe(1_000_000n); // exactly the float stays
     const receipt = t.ctx.receipts.proof((p as { receiptId: string }).receiptId);
-    expect(receipt.receipt.kind).toBe("payout");
+    expect((receipt.receipt as { kind: string }).kind).toBe("payout");
     expect(receipt.checks).toEqual({ hashMatchesBody: true, signatureValid: true });
     // Nothing left above the float: a second payout does nothing.
     expect((await t.ctx.treasury.payout(owner.accountId, t.ctx.receipts, 1_000_000n, "scheduler")).paid).toBe(false);
@@ -168,18 +168,18 @@ describe("Veyra as an x402 seller, the mandate, payouts and anchored verdicts", 
   it("every Watchtower verdict is provable against the scan's anchored Merkle root", async () => {
     const t = await boot();
     await t.ctx.watchtower.scan();
-    const latest = t.ctx.watchtower.latest();
-    expect(latest.scan!.root).toMatch(/^[0-9a-f]{64}$/);
+    const scan = t.ctx.watchtower.latest().scan as unknown as { root: string };
+    expect(scan.root).toMatch(/^[0-9a-f]{64}$/);
     const p = t.ctx.watchtower.proof("payee-swapper");
     expect(p.valid).toBe(true);
-    expect(p.root).toBe(latest.scan!.root);
-    expect(p.verdict.verdict).toBe("flagged");
-    expect(p.receipt!.receipt.root).toBe(p.root);
+    expect(p.root).toBe(scan.root);
+    expect((p.verdict as unknown as { verdict: string }).verdict).toBe("flagged");
+    expect((p.receipt!.receipt as { root: string }).root).toBe(p.root);
     expect(p.receipt!.checks.signatureValid).toBe(true);
-    expect(p.receipt!.anchor?.status).toBe("anchored");
+    expect((p.receipt!.anchor as unknown as { status: string }).status).toBe("anchored");
     expect(p.receipt!.proof?.valid).toBe(true);
     const ok = t.ctx.watchtower.proof("scout-research");
-    expect(ok.verdict.verdict).toBe("ok");
+    expect((ok.verdict as unknown as { verdict: string }).verdict).toBe("ok");
     expect(ok.path.length).toBe(p.path.length);
     const viaHttp = await (await fetch(`${t.base}/watchtower/agents/scout-research/proof`)).json();
     expect(viaHttp.valid).toBe(true);

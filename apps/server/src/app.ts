@@ -13,6 +13,7 @@ import { Scheduler } from "./scheduler.js";
 export async function buildApp(config: Config, overrides: ContextOverrides = {}) {
   const ctx = buildContext(config, overrides);
   const app = Fastify({
+    trustProxy: true,
     logger: config.NODE_ENV === "test" ? false : { level: "info", redact: ["req.headers.authorization", "req.headers.cookie", "req.headers['x-api-key']"] },
     bodyLimit: 15 * 1024 * 1024,
   });

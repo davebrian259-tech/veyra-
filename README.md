@@ -182,6 +182,12 @@ Copy `apps/server/.env.example` to `apps/server/.env` and set `VEYRA_MODE=live` 
   `./scripts/deploy-contracts.sh <parent> <writer> testnet`), and **Settings → Connect the
   Agent Market** for the job board.
 
+## Deploy
+
+The console runs on Cloudflare Pages; the server runs on a machine you control, reached
+through a Cloudflare Tunnel, with a Pages Function proxying `/api/*`. Both are free. Steps are
+in [docs/DEPLOY.md](docs/DEPLOY.md). `Dockerfile` builds the server for Fly.io, Railway or a VPS.
+
 ## Repository
 
 ```
