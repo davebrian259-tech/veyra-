@@ -1,0 +1,28 @@
+# One-click hosting for the Veyra server on Render's free tier (Deploy to Render button in the README).
+# Free instances sleep after 15 minutes without traffic and keep no disk, which is fine for the
+# simulator: the first request after a sleep takes about a minute, and the ledger starts fresh.
+services:
+  - type: web
+    name: veyra-server
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /config
+    envVars:
+      - key: VEYRA_MODE
+        value: sim
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8787"
+      - key: DATABASE_PATH
+        value: /data/veyra.db
+      - key: VEYRA_ENCRYPTION_KEY
+        generateValue: true
+      - key: VEYRA_SESSION_SECRET
+        generateValue: true
+      # Fill these in after the Cloudflare Pages site exists (Render dashboard → Environment).
+      - key: PUBLIC_WEB_ORIGIN
+        sync: false
+      - key: PUBLIC_API_URL
+        sync: false

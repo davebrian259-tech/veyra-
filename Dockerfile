@@ -1,6 +1,6 @@
 # The Veyra server. It needs Node 22 (node:sqlite) and a writable /data volume.
 FROM node:22-slim AS build
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server/package.json apps/server/
@@ -16,6 +16,7 @@ COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/apps/server/node_modules apps/server/node_modules
 COPY --from=build /app/apps/server/dist apps/server/dist
 COPY --from=build /app/apps/server/package.json apps/server/
+RUN mkdir -p /data
 VOLUME ["/data"]
 EXPOSE 8787
 CMD ["node", "apps/server/dist/index.js"]

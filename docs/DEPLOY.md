@@ -1,97 +1,122 @@
-# Deploying Veyra from the Cloudflare dashboard
+# Putting Veyra online
 
-Veyra has two parts.
+This guide gets Veyra running on the internet for free, using only web dashboards. You do
+not need to install anything. Budget about 25 minutes. You will need a GitHub account with
+access to the `veyra-` repository, a Cloudflare account, and a Render account. All three are
+free to create.
 
-- **The console** is static files. It runs on Cloudflare Pages, free, deployed from GitHub.
-- **The server** is a Node process with a SQLite database and a scheduler. It cannot run inside
-  a Cloudflare Worker, so it runs on your machine (WSL) and Cloudflare reaches it through a
-  Cloudflare Tunnel, also free. A Pages Function in the repo proxies `/api/*` to the tunnel, so
-  the browser talks to one origin and the session cookie stays first-party.
+## What you are setting up
+
+Veyra is two things:
+
+- **The console**, the website people see. It is a set of static files, so it lives on
+  **Cloudflare Pages**.
+- **The server**, the program that does the work. It needs to run all the time, which
+  Cloudflare Pages cannot do, so it lives on **Render**.
+
+The console calls the server through a small forwarder that is already in the repository.
+You connect the two by pasting one address into a settings box. That is the whole job.
 
 ```
-browser ──▶ https://veyra.pages.dev  (Pages: static console + /api proxy)
-                                     └──▶ API_ORIGIN = https://api.<your-domain>  (Tunnel)
-                                                                     └──▶ WSL: pnpm dev:server on :8787
+Visitor ──▶ Cloudflare Pages (the console) ──▶ Render (the server)
 ```
 
-Everything below is done in the browser except two pasted commands: starting the server and
-installing the tunnel connector.
+## Part 1: the server on Render (about 5 minutes)
 
-## Part 1: the server on WSL
+1. Open https://render.com and sign up or sign in. Choose **Sign in with GitHub**.
+2. Open this link: https://render.com/deploy?repo=https://github.com/davebrian259-tech/veyra-
+   It reads the `render.yaml` file in the repository and fills in everything.
+3. If Render asks which branch, choose `claude/ecstatic-allen-5p20bs`.
+4. Click **Deploy Blueprint** (the button may say **Apply**). Render builds the server. This
+   takes four to six minutes the first time. Wait for the status to say **Live**.
+5. Click the service named **veyra-server**. At the top left is its address, something like
+   `https://veyra-server-abcd.onrender.com`. Copy it. This is the **server address**; you
+   will paste it twice later.
+6. Check it works: open `<server address>/config` in a new tab. You should see text starting
+   with `{"mode":"sim"`.
 
-1. In WSL, from the repository root, start the server and leave the terminal open:
+Note: the free plan puts the server to sleep after 15 minutes of no visitors. The first visit
+after that takes about a minute to wake it. Everyone after that is instant.
 
-```bash
-cd apps/server && cp -n .env.example .env; pnpm dev
-```
+## Part 2: the console on Cloudflare Pages (about 10 minutes)
 
-2. Check it answers: open http://localhost:8787/config in Windows. You should see JSON with
-   `"mode": "sim"`.
+1. Open https://dash.cloudflare.com and sign up or sign in.
+2. In the left menu click **Workers & Pages**, then the **Create** button, then the
+   **Pages** tab, then **Connect to Git**.
+3. Click **Connect GitHub**, approve access, and select the **veyra-** repository. Click
+   **Begin setup**.
+4. Fill in the form exactly like this. Leave everything else as it is.
 
-## Part 2: the tunnel (Cloudflare dashboard)
+   | Field | Value |
+   |---|---|
+   | Project name | `veyra` |
+   | Production branch | `claude/ecstatic-allen-5p20bs` |
+   | Framework preset | None |
+   | Build command | `pnpm build` |
+   | Build output directory | `dist` |
+   | Root directory (under *Advanced*) | `apps/web` |
 
-1. Go to **dash.cloudflare.com** → **Zero Trust** (left menu). The first visit asks you to pick
-   a team name and the **Free** plan.
-2. **Networks → Tunnels → Create a tunnel → Cloudflared**. Name it `veyra`. Save.
-3. On the **Install and run a connector** page, choose **Debian / 64-bit**. Copy the single
-   command it shows (it starts with `curl -L --output cloudflared.deb …` and ends with
-   `cloudflared service install <token>`). Paste it into a second WSL terminal. The page shows
-   the connector as **Connected** within a minute.
-4. **Next** → **Public hostname**:
-   - **Subdomain:** `api`. **Domain:** pick one of yours. If you have none, buy or transfer one
-     under **Domain Registration**, or use a free quick tunnel (step 6).
-   - **Type:** `HTTP`. **URL:** `localhost:8787`.
-   - Save the tunnel.
-5. Open `https://api.<your-domain>/config` in a browser. The same JSON as before means the
-   tunnel works. That URL is your **API_ORIGIN**.
-6. No domain? Run `cloudflared tunnel --url http://localhost:8787` in WSL instead of steps
-   2–4. It prints a temporary `https://….trycloudflare.com` URL. Use that as `API_ORIGIN`; it
-   changes each time you restart it.
+5. Still under *Advanced*, open **Environment variables** and click **Add variable**:
 
-## Part 3: the console on Pages (Cloudflare dashboard)
+   | Variable name | Value |
+   |---|---|
+   | `API_ORIGIN` | the server address from Part 1, for example `https://veyra-server-abcd.onrender.com` |
 
-1. **Workers & Pages → Create → Pages → Connect to Git**. Authorise GitHub and choose the
-   `veyra-` repository.
-2. **Set up builds and deployments**:
-   - **Production branch:** `claude/ecstatic-allen-5p20bs` (or `main` once merged).
-   - **Framework preset:** None.
-   - **Build command:** `pnpm install && pnpm build`
-   - **Build output directory:** `dist`
-   - **Root directory (advanced):** `apps/web`
-   - **Environment variables (advanced):** add
-     - `NODE_VERSION` = `22`
-     - `SKIP_DEPENDENCY_INSTALL` = `true`
-     - `API_ORIGIN` = the URL from Part 2, for example `https://api.yourdomain.com`
-3. **Save and Deploy**. The first build takes two to three minutes. The site is at
-   `https://veyra-<something>.pages.dev`; rename the project under **Settings** if you like.
-4. Open the site. The landing page loads from Pages; **Enter the simulator** calls
-   `/api/sim/session`, which the Pages Function forwards to your tunnel. The dot matrix shows
-   your server's latest Watchtower scan once one has run.
+   No `https://` missing, no slash at the end.
+6. Click **Save and Deploy**. The build takes two to three minutes. When it finishes,
+   Cloudflare shows the site address, something like `https://veyra-abc.pages.dev`. Copy it.
+   This is the **console address**.
+7. Open the console address. You should see the Veyra landing page. Click **Enter the
+   simulator**. If the server was asleep, the button may take up to a minute the first time.
 
-Every push to the production branch redeploys the console. The server picks up changes when
-you restart `pnpm dev`.
+From now on, every change pushed to the branch rebuilds the console by itself.
 
-## Part 4: make the server public-ready
+## Part 3: tell the server its public addresses (about 3 minutes)
 
-Set these in `apps/server/.env`, then restart `pnpm dev`:
+The server signs an identity document that names its own address. Give it the real ones.
 
-- `VEYRA_ENCRYPTION_KEY`: 32 random bytes as hex. Generate one in WSL with
-  `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
-- `PUBLIC_API_URL`: the API URL from Part 2, so the KYA credential and agent card name the
-  public endpoints.
-- `PUBLIC_WEB_ORIGIN`: the Pages URL, for CORS on direct API calls.
-- `NODE_ENV=production`: makes the session cookie `Secure`. The dev command still works.
+1. Back in Render, open **veyra-server**, then **Environment** in the left menu.
+2. Set these two values and click **Save Changes**:
 
-## What to check
+   | Key | Value |
+   |---|---|
+   | `PUBLIC_API_URL` | the server address from Part 1 |
+   | `PUBLIC_WEB_ORIGIN` | the console address from Part 2 |
 
-- `https://<pages>/api/config` returns the mode and integrations.
-- `https://<pages>/api/.well-known/agent-card.json` names your public API URL.
-- `claude mcp add --transport http veyra https://api.<your-domain>/mcp` works from any machine.
-- In the Pages dashboard, **Functions** shows invocations for `/api/*`.
+3. Render restarts the server on its own. Wait for **Live** again.
 
-## Alternatives
+## Checking everything
 
-- Terminal deploy of the console: `pnpm deploy:web` (uses Wrangler; log in once with
-  `pnpm --filter @veyra/web exec wrangler login`).
-- Hosting the server elsewhere: `Dockerfile` at the repository root builds it for Fly.io,
-  Railway, Render or a VPS. Mount a volume at `/data` and point `API_ORIGIN` at that host.
+- `<console address>/api/config` shows the same text as `<server address>/config`.
+- `<console address>/api/.well-known/agent-card.json` mentions your server address.
+- In the console: **Enter the simulator**, then **Hire Veyra**. A contract page appears and
+  reaches **delivered** within a few seconds.
+- **Attack lab**: run any attack. The attacker's balance stays at 0.00.
+
+## If something goes wrong
+
+- **The build on Cloudflare fails.** Open the failed deployment and read the last lines.
+  The usual cause is a typo in *Root directory* (`apps/web`) or *Build command*
+  (`pnpm build`). Fix it under **Settings → Builds & deployments** and click **Retry**.
+- **The page loads but "Enter the simulator" shows an error.** `API_ORIGIN` is wrong or the
+  server is still waking up. Check **Settings → Environment variables** on the Pages project.
+  After changing a variable, go to **Deployments** and **Retry** the latest one.
+- **The server shows "Deploy failed" on Render.** Open the **Logs** tab. Click **Manual
+  Deploy → Deploy latest commit** to try again.
+- **`/config` on the server address never loads.** The free instance may be waking up. Wait a
+  minute and refresh.
+
+## Later: running with real money
+
+The setup above runs the simulator: play money, a local market, no keys. To run Veyra for
+real on NEAR mainnet, the server needs secret keys, which should live on a machine the owner
+controls, not on a free host. That is the "run it on your own PC behind a Cloudflare Tunnel"
+setup; ask the owner for it when the time comes. Nothing in Parts 1 to 3 needs to change
+except `API_ORIGIN`.
+
+## For reference
+
+- Console build settings are also stored in `apps/web/wrangler.jsonc`.
+- The forwarder from `/api/*` to the server is `apps/web/functions/api/[[path]].ts`.
+- The server image is built from `Dockerfile` in the repository root; `render.yaml`
+  describes the Render service.
