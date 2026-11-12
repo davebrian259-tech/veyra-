@@ -21,8 +21,10 @@ export default function Lobby() {
   useEffect(() => { document.title = "Vaults · Veyra Heist"; }, []);
   useEffect(() => {
     if (!lobby.data || tourSeen("lobby")) return;
-    const t = setTimeout(() => void startTour("lobby"), 700);
-    return () => clearTimeout(t);
+    // wait until the page is idle so the tour never competes with the first paint
+    let idle = 0;
+    const t = setTimeout(() => { idle = (window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 1)))(() => void startTour("lobby")) as number; }, 1800);
+    return () => { clearTimeout(t); window.cancelIdleCallback?.(idle); };
   }, [lobby.data]);
   if (lobby.error && !lobby.data) return <ErrorNote message={lobby.error} retry={lobby.reload} />;
   if (!lobby.data) return <Skeleton lines={8} height={28} />;

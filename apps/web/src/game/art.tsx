@@ -118,3 +118,32 @@ export function PoweredByNear({ network }: { network?: string }) {
     </a>
   );
 }
+
+/** The money flow of one ranked entry, as a diagram. */
+export function MoneyFlow() {
+  return (
+    <figure className="flow">
+      <svg viewBox="0 0 760 300" role="img" aria-labelledby="flow-t flow-d">
+        <title id="flow-t">Where a ranked entry fee goes</title>
+        <desc id="flow-d">You pay the entry fee into the Heist contract. If you crack the vault, the contract pays you the pot and your fee. If the vault holds, 70% of the fee goes to the pot, 20% to backers and 10% to the house. Backers stake into the pot.</desc>
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--fg-3)" /></marker>
+          <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--gold)" /></marker>
+        </defs>
+        <g className="node"><rect x="10" y="118" width="130" height="64" rx="16" /><text x="75" y="146">You</text><text x="75" y="166" className="sub">pay the entry fee</text></g>
+        <g className="node strong"><rect x="300" y="108" width="160" height="84" rx="18" /><text x="380" y="142">Heist contract</text><text x="380" y="164" className="sub">holds every pot</text></g>
+        <g className="node"><rect x="600" y="20" width="150" height="64" rx="16" /><text x="675" y="48">Pot · 70%</text><text x="675" y="68" className="sub">the vault gets richer</text></g>
+        <g className="node"><rect x="600" y="118" width="150" height="64" rx="16" /><text x="675" y="146">Backers · 20%</text><text x="675" y="166" className="sub">shared by stake</text></g>
+        <g className="node"><rect x="600" y="216" width="150" height="64" rx="16" /><text x="675" y="244">House · 10%</text><text x="675" y="264" className="sub">seeds new pots</text></g>
+        <path d="M140 150 H296" className="edge" markerEnd="url(#ah)" />
+        <text x="218" y="140" className="lbl">fee</text>
+        <path d="M460 130 C530 110 540 60 596 54" className="edge" markerEnd="url(#ah)" />
+        <path d="M460 150 H596" className="edge" markerEnd="url(#ah)" />
+        <path d="M460 170 C530 190 540 240 596 246" className="edge" markerEnd="url(#ah)" />
+        <text x="500" y="92" className="lbl">vault holds</text>
+        <path d="M300 182 C230 250 120 250 80 186" className="edge gold" markerEnd="url(#ahg)" />
+        <text x="190" y="262" className="lbl gold">you crack it: pot + your fee</text>
+      </svg>
+    </figure>
+  );
+}

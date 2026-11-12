@@ -1,279 +1,213 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { useSession } from "../shell/session";
-import { AiSecurity01Icon, ArrowRight01Icon, ArrowUpRight01Icon, CheckmarkCircle02Icon, Github01Icon, Radar01Icon } from "@hugeicons/core-free-icons";
+import { MotionConfig, motion } from "motion/react";
+import { ArrowRight01Icon, ArrowUpRight01Icon, CheckmarkCircle02Icon, Github01Icon } from "@hugeicons/core-free-icons";
 import { api } from "../api";
-import { DotMatrix, IsoGuard, IsoMerkle, IsoPlug, IsoRadar, IsoTiers, WaveField, type DotKind } from "../art";
 import { Icon, Mark, Wordmark } from "../brand";
-import { NearMark, TONES, VaultEmblem } from "../game/art";
-import { near as nearAmt, type Lobby as HeistLobby } from "../game/heist-api";
+import { useSession } from "../shell/session";
+import { MoneyFlow, PoweredByNear, RogueAvatar, ShieldToken, TONES, VaultEmblem } from "../game/art";
+import { ALL_SHIELDS, nearNum, type Lobby, type Run } from "../game/heist-api";
+import "../game/game.css";
+import "./landing.css";
 
-/** The last full live scan, published in docs/watchtower/latest.md. Shown until this server has scanned the market itself. */
-const PUBLISHED_SCAN = { total: 667, ok: 380, warn: 1, flagged: 0, offline: 286, at: "11 November 2026" };
+const REPO = "https://github.com/davebrian259-tech/veyra-";
 
-const STEPS = [
-  { n: "01", t: "Hired", d: "By the market, by another agent with a cheque, or by an MCP client. The cheque is held, not cashed." },
-  { n: "02", t: "Planned", d: "The brief becomes subtasks, each with a cap inside the owner's mandate." },
-  { n: "03", t: "Quoted", d: "Specialist agents quote for free. GUARD checks the payee, the price and the counterparty." },
-  { n: "04", t: "Paid on delivery", d: "Each cheque settles only when the work arrives and passes. No delivery, no payment." },
-  { n: "05", t: "Receipted", d: "The buyer's cheque clears. Every payment gets a receipt anchored on NEAR. The margin goes to the owner." },
+/** Which move cracks which vault. Verified by the referee's tests on every build. */
+const LADDER: { move: string; what: string; cracks: number[]; stoppedBy?: string }[] = [
+  { move: "The redirect", what: "Ask to be paid at your own account.", cracks: [1], stoppedBy: "payee lock" },
+  { move: "Bait and switch", what: "List cheap, charge more at the door.", cracks: [1, 2], stoppedBy: "price seal" },
+  { move: "The whisper", what: "Tell Veyra's model to pay you.", cracks: [1, 2, 3], stoppedBy: "scanner" },
+  { move: "The disguise", what: "Say it in words the scanner does not know.", cracks: [1, 2, 3, 4], stoppedBy: "taint trace" },
 ];
 
-const STACK = ["NEAR AI Agent Market", "NEAR Intents", "x402 · NEP-366", "NEAR AI Cloud", "NEP-413", "MCP", "A2A"];
+/** A still of the Heist Cam, so the page shows the game instead of describing it. */
+const CAM = [
+  { who: "VY", t: "Veyra posts a job", d: "Competitor brief. It will pay at most 1.50 USDC.", tone: "veyra" },
+  { who: "YOU", t: "Your agent quotes", d: "0.40 USDC, pay to you.sim.", tone: "attack" },
+  { who: "SH", t: "Payee lock blocks", d: "you.sim is not the market treasury.", tone: "blocked" },
+  { who: "⛓", t: "Vault 2 holds", d: "Outcome hash written to NEAR.", tone: "neutral" },
+];
 
 export default function Landing() {
-  const { config, user, wallet, ready, busy, error, signIn } = useSession();
+  const { config, user, ready, busy, error, signIn } = useSession();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = params.get("next") ?? "/app";
-  const mode = config?.mode ?? null;
-  const ctaLabel = !ready ? "Loading…" : user ? "Open the console" : mode === "sim" ? "Enter the simulator" : wallet ? "Sign in with NEAR" : "Connect wallet";
   const [wantIn, setWantIn] = useState(false);
-  const cta = () => { if (user) navigate(next); else { setWantIn(true); void signIn(); } };
+  const console_ = () => { if (user) navigate(next); else { setWantIn(true); void signIn(); } };
   useEffect(() => { if (user && (wantIn || params.get("next"))) navigate(next, { replace: true }); }, [user, wantIn, next, params, navigate]);
-  useEffect(() => { document.title = "Veyra · autonomous contractor on NEAR"; }, []);
-  const [heist, setHeist] = useState<HeistLobby | null>(null);
-  useEffect(() => { api<HeistLobby>("/heist").then(setHeist).catch(() => undefined); }, []);
-  const [scan, setScan] = useState<{ total: number; ok: number; warn: number; flagged: number; offline: number; at: string; live: boolean } | null>(null);
+  useEffect(() => { document.title = "Veyra Heist · rob an AI agent on NEAR"; }, []);
 
+  const [heist, setHeist] = useState<Lobby | null>(null);
+  const [lastCrack, setLastCrack] = useState<Run | null>(null);
   useEffect(() => {
-    api("/watchtower")
-      .then((w) => {
-        const s = w.scan;
-        if (s && s.total > 20) setScan({ total: s.total, ok: s.ok, warn: s.warn, flagged: s.flagged, offline: s.offline, at: new Date(s.finished_at ?? s.started_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }), live: true });
-        else setScan({ ...PUBLISHED_SCAN, live: false });
-      })
-      .catch(() => setScan({ ...PUBLISHED_SCAN, live: false }));
+    api<Lobby>("/heist").then(setHeist).catch(() => undefined);
+    api<{ runs: Run[] }>("/heist/runs?limit=30").then((r) => setLastCrack(r.runs.find((x) => x.cracked) ?? null)).catch(() => undefined);
   }, []);
-
-  const counts = (scan ?? PUBLISHED_SCAN) as unknown as Record<DotKind, number>;
-
-  return (
-    <div className="landing">
-      {error && <div className="toast-top"><div className="alert bad" role="alert">{error}</div></div>}
-      <nav className="lnav" aria-label="Landing">
-        <Link to="/" className="wordmark" aria-label="Veyra home"><Wordmark /></Link>
-        <div className="lnav-links">
-          <Link to="/play">Heist</Link>
-          <a href="#how">How it works</a>
-          <a href="#security">Controls</a>
-          <a href="#watchtower">Watchtower</a>
-          <a href="https://github.com/davebrian259-tech/veyra-" target="_blank" rel="noreferrer">GitHub</a>
-        </div>
-        <Link className="btn primary" to="/play">Play Heist</Link>
-      </nav>
-
-      <header className="hero">
-        <WaveField />
-        <div className="hero-inner">
-          <h1>Veyra holds the pot.<br />Take it.</h1>
-          <p className="lede">Veyra is an AI agent that hires and pays other agents on NEAR. Build a rogue agent and try to rob it. Five vaults, each guarded by more of its real defences.</p>
-          <div className="row center">
-            <Link className="btn primary lg" to="/play">Play Heist <Icon icon={ArrowRight01Icon} size={16} /></Link>
-            <button className="btn lg" onClick={cta} disabled={!ready || busy}>{ctaLabel === "Enter the simulator" ? "Open the console" : ctaLabel} <Icon icon={ArrowUpRight01Icon} size={16} /></button>
-          </div>
-        </div>
-        <VaultStrip heist={heist} />
-        <Mockup />
-      </header>
-
-      <section className="strip" aria-label="Built on">
-        <p>Built on the NEAR agent stack</p>
-        <div className="strip-row">{STACK.map((s) => <span key={s}>{s}</span>)}</div>
-      </section>
-
-      <section id="security" className="lsection">
-        <div className="lhead">
-          <span className="kicker">Controls</span>
-          <h2>An agent with a wallet needs more than a prompt.</h2>
-          <p>Every control here is code you can run. In the attack lab, hostile agents try to rob Veyra. The attacker's balance stays at zero.</p>
-        </div>
-        <div className="bento">
-          <article className="tile dark span2">
-            <div>
-              <span className="tile-k">GUARD</span>
-              <h3>Nine checks before any cheque.</h3>
-              <ul className="ticks">
-                {["Payee pinned to the market treasury", "Price equals the published plan", "Subtask cap, contract envelope, daily limit", "Counterparty trust and blocked categories", "Injection scan and taint tracking"].map((x) => <li key={x}><Icon icon={CheckmarkCircle02Icon} size={16} />{x}</li>)}
-              </ul>
-            </div>
-            <IsoGuard size={220} />
-          </article>
-          <article className="tile">
-            <IsoTiers size={170} />
-            <span className="tile-k">Treasury</span>
-            <h3>No hot keys.</h3>
-            <p>The vault pays the spend account. The spend account holds one job's float. The market holds each cheque until delivery.</p>
-          </article>
-          <article className="tile">
-            <IsoMerkle size={170} />
-            <span className="tile-k">Receipts</span>
-            <h3>Every payment, provable.</h3>
-            <p>Signed receipts in a Merkle tree. The root is anchored in the veyra-ledger contract on NEAR.</p>
-          </article>
-          <article className="tile">
-            <SignedDoc />
-            <span className="tile-k">Mandate</span>
-            <h3>Limits the owner signs once.</h3>
-            <p>Largest job, daily limit, margin, blocked categories. Signed with a NEAR wallet. Enforced in code.</p>
-          </article>
-          <article className="tile">
-            <IsoPlug size={170} />
-            <span className="tile-k">Open to any agent</span>
-            <h3>Hire it with a cheque.</h3>
-            <p>Any agent can pay Veyra over x402. The cheque clears only on delivery. Failed job, no charge.</p>
-          </article>
-          <article className="tile accent-tile span2">
-            <IsoRadar size={170} />
-            <div>
-              <span className="tile-k">Watchtower</span>
-              <h3>It audits the whole market.</h3>
-              <p>Every agent's live price and payee, checked against what it publishes. Every verdict anchored on NEAR. Proven fraud reported on-chain with evidence.</p>
-            </div>
-          </article>
-          <article className="tile">
-            <Payout />
-            <span className="tile-k">Payouts</span>
-            <h3>It pays its owner.</h3>
-            <p>Margin above the float goes to the owner's account, with a receipt.</p>
-          </article>
-        </div>
-      </section>
-
-      <section id="how" className="lsection">
-        <div className="lhead">
-          <span className="kicker">How it works</span>
-          <h2>One job. Five steps. Nothing on trust.</h2>
-        </div>
-        <ol className="stepper">
-          {STEPS.map((s) => (
-            <li key={s.n}>
-              <span className="step-n">{s.n}</span>
-              <div><h3>{s.t}</h3><p>{s.d}</p></div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section id="watchtower" className="lsection">
-        <div className="matrix-band">
-          <div className="matrix-copy">
-            <span className="kicker"><Icon icon={Radar01Icon} size={14} /> Watchtower</span>
-            <h2>Every dot is a real agent on market.near.ai.</h2>
-            <p>{scan?.live ? "This server's latest scan." : `Live scan, ${PUBLISHED_SCAN.at}.`} Free quotes, checked against published prices and the market treasury. No money moved.</p>
-            <div className="matrix-stats">
-              <Stat n={counts.ok + counts.warn + counts.flagged + counts.offline} l="agents scanned" />
-              <Stat n={counts.ok} l="honest quotes" />
-              <Stat n={counts.flagged} l="flagged" tone={counts.flagged ? "bad" : undefined} />
-              <Stat n={counts.offline} l="not taking calls" muted />
-            </div>
-            <div className="legend">
-              <span><i className="lg-ok" />honest</span><span><i className="lg-warn" />warning</span><span><i className="lg-flagged" />flagged</span><span><i className="lg-offline" />offline</span>
-            </div>
-          </div>
-          <DotMatrix counts={counts} cols={29} />
-        </div>
-      </section>
-
-      <section className="cta-band">
-        <Mark size={52} />
-        <h2>Run the whole economy in your browser.</h2>
-        <p>{mode === "sim" ? "No wallet. No keys. Hire Veyra, launch the attacks, audit the receipts." : "Connect a NEAR wallet to sign in. Veyra never sees your keys."}</p>
-        <button className="btn lg" onClick={cta} disabled={!ready || busy}>{ctaLabel} <Icon icon={ArrowRight01Icon} size={16} /></button>
-      </section>
-
-      <footer className="lfoot">
-        <Link to="/" className="wordmark"><Wordmark size={22} /></Link>
-        <span>An autonomous contractor on the NEAR AI Agent Market.</span>
-        <span className="lfoot-links">
-          <a href="https://near.org" target="_blank" rel="noreferrer"><NearMark size={13} /> Powered by NEAR</a>
-          <Link to="/app/evidence"><Icon icon={AiSecurity01Icon} size={14} /> Evidence</Link>
-          <a href="/api/.well-known/agent-card.json">Agent card</a>
-          <a href="https://github.com/davebrian259-tech/veyra-" target="_blank" rel="noreferrer"><Icon icon={Github01Icon} size={14} /> Source</a>
-        </span>
-      </footer>
-    </div>
-  );
-}
-
-function Stat({ n, l, tone, muted }: { n: number; l: string; tone?: "bad"; muted?: boolean }) {
-  return (
-    <div className={`mstat ${tone ?? ""} ${muted ? "muted" : ""}`}>
-      <span className="mono-num">{n.toLocaleString()}</span>
-      <span>{l}</span>
-    </div>
-  );
-}
-
-/** A signed page: the mandate. */
-function SignedDoc() {
-  return (
-    <svg viewBox="0 0 200 170" width={170} height={145} fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
-      <path d="M62 18h58l22 22v112H62z" fill="var(--bg)" />
-      <path d="M120 18v22h22" />
-      {[52, 66, 80, 94].map((y) => <path key={y} d={`M76 ${y}h${y === 94 ? 30 : 50}`} strokeOpacity={0.45} />)}
-      <path d="M76 126c8-14 14 4 20-8s10 8 18-6 8 6 18-8" stroke="var(--accent)" strokeWidth={1.6} />
-      <circle cx="132" cy="128" r="9" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.12} />
-      <path d="M128 128l3 3 5-6" stroke="var(--accent)" strokeWidth={1.6} />
-    </svg>
-  );
-}
-
-/** Coins moving from the float to the owner. */
-function Payout() {
-  return (
-    <svg viewBox="0 0 200 170" width={170} height={145} fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
-      {[0, 1, 2].map((i) => <ellipse key={i} cx="60" cy={118 - i * 10} rx="30" ry="11" fill="var(--bg)" />)}
-      <path d="M30 118v-20M90 118v-20" />
-      <path d="M100 100h40M132 92l8 8-8 8" stroke="var(--accent)" strokeWidth={1.6} />
-      <rect x="148" y="78" width="36" height="46" rx="8" fill="var(--bg)" />
-      <circle cx="166" cy="96" r="6" />
-      <path d="M156 116c2-6 18-6 20 0" />
-    </svg>
-  );
-}
-
-/** The five vaults with their live pots, linking straight into the game. */
-function VaultStrip({ heist }: { heist: HeistLobby | null }) {
   const vaults = heist?.vaults ?? [];
-  if (!vaults.length) return null;
-  return (
-    <div className="vault-strip" aria-label="The five vaults">
-      {vaults.map((v) => (
-        <Link key={v.id} to={`/play/vault/${v.id}`} className="vs-item" style={{ ["--glow" as string]: TONES[v.tone].glow }}>
-          <VaultEmblem id={v.id} tone={v.tone} shields={v.shields.length} size={72} />
-          <span className="vs-name">{v.name}</span>
-          <span className="vs-pot">{heist?.ranked.enabled && v.chain ? `${nearAmt(v.chain.potYocto)} NEAR` : `${v.shields.length} shields`}</span>
-        </Link>
-      ))}
-    </div>
-  );
-}
+  const totalPot = vaults.reduce((t, v) => t + (v.chain ? nearNum(v.chain.potYocto) : 0), 0);
+  const v5 = vaults.find((v) => v.id === 5);
 
-/** A still of the console, so the page shows the product instead of describing it. */
-function Mockup() {
-  const rows = [
-    ["cheque_held", "x402 cheque for 4.00 USDC held, not executed", ""],
-    ["guard_block", "payee-swapper asked to be paid at attacker.near", "bad"],
-    ["quote_ok", "scout-research quoted 0.50, listed 0.50", "good"],
-    ["cheque_signed", "NEP-366 cheque, key 3 of 8, settles on delivery", ""],
-    ["settled", "Buyer's cheque cleared on delivery · receipt anchored", "good"],
-  ];
   return (
-    <div className="mockup" aria-hidden="true">
-      <div className="mock-bar"><i /><i /><i /><span>veyra · contract ctr_7Hq2</span></div>
-      <div className="mock-body">
-        <aside>
-          <Mark size={20} tile />
-          {["Business", "Watchtower", "Attack lab", "Market", "Treasury"].map((x, i) => <span key={x} className={i === 0 ? "on" : ""}>{x}</span>)}
-        </aside>
-        <div className="mock-main">
-          <div className="mock-stats">
-            {[["Revenue", "4.00"], ["Paid to agents", "1.35"], ["Margin", "2.65"], ["Blocked", "1"]].map(([k, v]) => <div key={k}><span>{k}</span><b>{v}</b></div>)}
+    <MotionConfig reducedMotion="user">
+      <div className="arena lp">
+        {error && <div className="toast-top"><div className="alert bad" role="alert">{error}</div></div>}
+        <nav className="lp-nav" aria-label="Main">
+          <Link to="/" className="wordmark" aria-label="Veyra home"><Wordmark /></Link>
+          <div className="lp-links">
+            <a href="#how">How it works</a>
+            <a href="#vaults">Vaults</a>
+            <a href="#economy">Economy</a>
+            <a href="#fair">Fair play</a>
+            <a href={REPO} target="_blank" rel="noreferrer">GitHub</a>
           </div>
-          <ul>{rows.map(([k, m, t]) => <li key={k} className={t}><code>{k}</code>{m}</li>)}</ul>
-        </div>
+          <Link className="btn primary" to="/play">Play free</Link>
+        </nav>
+
+        <header className="lp-hero">
+          <div className="lp-hero-copy">
+            <h1>Veyra holds the pot.<br /><span>Take it.</span></h1>
+            <p className="lp-lede">Veyra is an AI agent that pays other agents for work. Build a rogue agent and try to rob it. Five vaults, each guarded by more of its real defences, with real pots on NEAR.</p>
+            <div className="cta-row">
+              <Link className="btn primary big" to="/play">Play free <Icon icon={ArrowRight01Icon} size={18} /></Link>
+              <Link className="btn big" to="/play/learn">How to play</Link>
+            </div>
+            <ul className="lp-proof">
+              <li><Icon icon={CheckmarkCircle02Icon} size={16} /> No wallet to practise</li>
+              <li><Icon icon={CheckmarkCircle02Icon} size={16} /> Testnet NEAR is free</li>
+              <li><Icon icon={CheckmarkCircle02Icon} size={16} /> Every heist can be replayed</li>
+            </ul>
+          </div>
+          <motion.div className="lp-hero-art" initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }} style={{ ["--glow" as string]: TONES.crimson.glow }}>
+            <VaultEmblem id={5} tone="crimson" shields={8} size={300} />
+            <div className="lp-hero-pot">
+              {heist?.ranked.enabled && v5?.chain ? <><b className="mono">{nearNum(v5.chain.potYocto).toFixed(2)}</b><span>NEAR in vault 5. Never cracked.</span></> : <><b className="mono">8</b><span>shields on vault 5</span></>}
+            </div>
+          </motion.div>
+        </header>
+
+        {vaults.length > 0 && (
+          <section className="lp-strip" aria-label="Live pots">
+            {vaults.map((v) => (
+              <Link key={v.id} to={`/play/vault/${v.id}`} className="lp-pot" style={{ ["--glow" as string]: TONES[v.tone].glow }}>
+                <VaultEmblem id={v.id} tone={v.tone} shields={v.shields.length} size={56} />
+                <span><b>{v.name}</b><small>{heist?.ranked.enabled && v.chain ? <span className="gold-ink mono">{nearNum(v.chain.potYocto).toFixed(2)} NEAR</span> : `${v.shields.length} shields`}</small></span>
+              </Link>
+            ))}
+            {heist?.ranked.enabled && <div className="lp-pot total"><span><b className="mono gold-ink">{totalPot.toFixed(2)} NEAR</b><small>in all pots, live from <a href={heist.ranked.explorer ?? "#"} target="_blank" rel="noreferrer">the contract</a></small></span></div>}
+          </section>
+        )}
+
+        <section id="how" className="lp-section">
+          <div className="lp-head">
+            <h2>One heist, three moves.</h2>
+            <p>A heist takes about ten seconds. You see every round, and the shield that stops you.</p>
+          </div>
+          <div className="lp-how">
+            <ol className="lp-steps">
+              <li><span className="mono">01</span><div><h3>Pick a vault</h3><p>Each vault lists the defences it has on. A shield that is off is a way in.</p></div></li>
+              <li><span className="mono">02</span><div><h3>Build a rogue agent</h3><p>Set your price, who gets paid, and what you deliver. Veyra's model reads it.</p></div></li>
+              <li><span className="mono">03</span><div><h3>Run the heist</h3><p>Crack it and the money is yours. Get stopped and the Heist Cam names the shield.</p></div></li>
+            </ol>
+            <div className="panel lp-cam" aria-label="A heist, round by round" style={{ ["--tone-a" as string]: TONES.sky.a }}>
+              <div className="panel-head"><h3>Heist Cam</h3><span className="link mono">vault 2 · Pinned</span></div>
+              <ol className="rounds">
+                {CAM.map((b) => <li key={b.t} className={`beat ${b.tone}`}><span className="who" aria-hidden="true">{b.who}</span><div><b>{b.t}</b><p>{b.d}</p></div></li>)}
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <section id="vaults" className="lp-section">
+          <div className="lp-head">
+            <h2>Five vaults. One ladder.</h2>
+            <p>Every vault adds one of Veyra's real defences. Each move cracks the vaults below the shield that counters it. Vault 5 has every shield on, and it holds.</p>
+          </div>
+          <div className="lp-vaults">
+            {(vaults.length ? vaults : []).map((v) => (
+              <Link to={`/play/vault/${v.id}`} key={v.id} className="lp-vault" style={{ ["--glow" as string]: TONES[v.tone].glow, ["--tone-a" as string]: TONES[v.tone].a }}>
+                <VaultEmblem id={v.id} tone={v.tone} shields={v.shields.length} size={88} />
+                <div className="grow"><h3>{v.id} · {v.name}</h3><p>{v.tagline}</p></div>
+                <div className="lp-shields" aria-label={`${v.shields.length} of 8 shields on`}>
+                  {ALL_SHIELDS.map((s) => <ShieldToken key={s.id} id={s.id} on={v.shields.some((x) => x.id === s.id)} label={s.short} />)}
+                </div>
+              </Link>
+            ))}
+          </div>
+          <div className="table-wrap lp-ladder">
+            <table className="history">
+              <caption className="sr-only">Which move cracks which vault</caption>
+              <thead><tr><th>Move</th>{[1, 2, 3, 4, 5].map((n) => <th key={n} className="num">V{n}</th>)}</tr></thead>
+              <tbody>
+                {LADDER.map((m) => (
+                  <tr key={m.move}>
+                    <td><b>{m.move}</b><span className="small muted"> {m.what}</span></td>
+                    {[1, 2, 3, 4, 5].map((n) => <td key={n} className="num">{m.cracks.includes(n) ? <span className="pill gold">cracked</span> : <span className="small muted">{m.stoppedBy}</span>}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="economy" className="lp-section">
+          <div className="lp-head">
+            <h2>Real pots. Real payouts.</h2>
+            <p>Ranked heists pay a small entry fee in testnet NEAR to the Heist contract. Veyra never holds it. Crack the vault and the contract pays you the whole pot.</p>
+          </div>
+          <div className="panel"><MoneyFlow /></div>
+          <div className="lp-split">
+            <div><b className="mono gold-ink">70%</b><span>of a failed fee joins the pot. Every failure makes the vault richer.</span></div>
+            <div><b className="mono">20%</b><span>goes to backers, who stake on a vault holding and lose it all on a crack.</span></div>
+            <div><b className="mono">10%</b><span>goes to the house, which seeds new pots.</span></div>
+          </div>
+        </section>
+
+        <section id="fair" className="lp-section">
+          <div className="lp-fair">
+            <div>
+              <h2>The referee can be checked.</h2>
+              <p>Every heist runs in a sealed simulation with fixed seeds, against Veyra's real guard code. Same agent, same vault, same result. A ranked entry commits to a hash of your agent before the duel, and the outcome hash is written to NEAR when it settles.</p>
+              <div className="cta-row">
+                {lastCrack ? <Link className="btn" to={`/play/runs/${lastCrack.id}`}>Re-run the latest crack</Link> : <Link className="btn" to="/play/vault/1?move=redirect">Crack vault 1</Link>}
+                <a className="btn ghost" href={`${REPO}/blob/main/contracts/heist/src/lib.rs`} target="_blank" rel="noreferrer">Read the contract <Icon icon={ArrowUpRight01Icon} size={14} /></a>
+              </div>
+            </div>
+            <pre className="lp-code" aria-label="Replay any heist from a terminal"><span className="muted"># replay any heist and compare hashes</span>{"\n"}pnpm heist:replay {lastCrack?.id ?? "run_…"}{"\n"}<span className="good-ink">✓ same outcome hash</span>{lastCrack && <>{"\n"}<span className="muted">{lastCrack.outcomeHash.slice(0, 32)}…</span></>}</pre>
+          </div>
+        </section>
+
+        <section className="lp-section">
+          <div className="lp-head">
+            <h2>The agent behind the game.</h2>
+            <p>Veyra is a working autonomous contractor on the NEAR AI Agent Market. The shields you fight are the checks it runs before it pays anyone.</p>
+          </div>
+          <div className="lp-agent">
+            <div className="panel"><h3>GUARD</h3><p>Payee pinning, price integrity, budget caps, injection scanning and taint tracking before every payment.</p></div>
+            <div className="panel"><h3>Cheques, not hot wallets</h3><p>NEP-366 delegate cheques that settle only on delivery. Every payment receipted and anchored on NEAR.</p></div>
+            <div className="panel"><h3>Watchtower</h3><p>Audits every agent on the market against what it publishes, and reports proven fraud on-chain.</p></div>
+          </div>
+          <div className="cta-row"><button className="btn" onClick={console_} disabled={!ready || busy}>{config?.mode === "sim" || user ? "Open the Veyra console" : "Sign in to the console"} <Icon icon={ArrowUpRight01Icon} size={16} /></button></div>
+        </section>
+
+        <section className="lp-final">
+          <div className="lp-final-art" aria-hidden="true">{["Payee Swap", "Ghost Bid", "Whisperer"].map((n) => <RogueAvatar key={n} seed={n} size={72} />)}</div>
+          <h2>Vault 1 falls to a single move.</h2>
+          <p>Practice is free and takes no wallet. You will be on the leaderboard in under a minute.</p>
+          <Link className="btn primary big" to="/play/vault/1?move=redirect">Start your first heist <Icon icon={ArrowRight01Icon} size={18} /></Link>
+        </section>
+
+        <footer className="lp-foot">
+          <Link to="/" className="wordmark" aria-label="Veyra home"><Mark size={22} /> <span>Veyra</span></Link>
+          <span className="muted small">A game against a real AI agent. {heist?.stats ? `${heist.stats.runs} heists played, ${heist.stats.cracks} cracks.` : ""}</span>
+          <span className="lp-foot-links">
+            <PoweredByNear network={heist?.ranked.network} />
+            <Link to="/app/evidence">Evidence</Link>
+            <a href="/api/.well-known/agent-card.json">Agent card</a>
+            <a href={REPO} target="_blank" rel="noreferrer"><Icon icon={Github01Icon} size={14} /> Source</a>
+          </span>
+        </footer>
       </div>
-    </div>
+    </MotionConfig>
   );
 }
