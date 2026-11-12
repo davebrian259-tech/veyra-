@@ -14,7 +14,7 @@ import { HeistCam } from "./HeistCam";
 import { MOVE_UNLOCK, nearNum, practice, recordRun, type Run, type ShieldId, type Spec } from "./heist-api";
 import { ShieldExplain } from "./Lobby";
 import { rankedPlan } from "./plans";
-import { useHeist } from "./session";
+import { useHeist, useSetParams } from "./session";
 import { startTour, tourSeen } from "./tour";
 import { useTx } from "./tx";
 
@@ -27,7 +27,7 @@ const DEFAULT_DELIVERABLE = "## Findings\nThree competitors, their pricing, and 
  */
 export default function Arena() {
   const { id = "1" } = useParams();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const h = useHeist();
   const { lobby, progress, setProgress, cracked } = h;
   const navigate = useNavigate();
@@ -41,7 +41,8 @@ export default function Arena() {
   const vaultNum = Number(id);
   const vault = lobby.data?.vaults.find((v) => v.id === vaultNum);
   const move = params.get("move");
-  const setParam = (k: string, v: string | null) => setParams((q) => { const n = new URLSearchParams(q); if (v === null) n.delete(k); else n.set(k, v); return n; }, { replace: true });
+  const setParams2 = useSetParams();
+  const setParam = (k: string, v: string | null) => setParams2({ [k]: v });
 
   useEffect(() => { document.title = vault ? `Vault ${vault.id} · ${vault.name} · Veyra Heist` : "Veyra Heist"; }, [vault]);
 

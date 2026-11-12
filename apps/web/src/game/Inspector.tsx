@@ -1,4 +1,4 @@
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Dialog } from "radix-ui";
 import { ArrowUpRight01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "../brand";
@@ -7,7 +7,7 @@ import { Empty, ErrorNote, Skeleton } from "../ui";
 import { RogueAvatar } from "./art";
 import { Explain } from "./explain";
 import { explorerAccount, usdc, type Player } from "./heist-api";
-import { useHeist } from "./session";
+import { useHeist, useSetParams } from "./session";
 
 /**
  * The agent inspector: any player's rogue agents, their record and recent heists. Deep-linked as
@@ -15,12 +15,12 @@ import { useHeist } from "./session";
  * workshop; anyone else's build can be copied to try in practice.
  */
 export default function Inspector({ who }: { who: string }) {
-  const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const h = useHeist();
   const p = useApi<Player>(`/heist/players/${encodeURIComponent(who)}`, { every: 15_000 });
   const mine = who === h.progress.callsign || who === h.account;
-  const close = () => { const q = new URLSearchParams(params); q.delete("player"); setParams(q, { replace: true }); };
+  const setP = useSetParams();
+  const close = () => setP({ player: null });
   const isAccount = /\.(testnet|near)$/.test(who);
   return (
     <Dialog.Root open onOpenChange={(o) => { if (!o) close(); }}>

@@ -17,7 +17,19 @@ import type { OwnerIntent, WalletTx } from "./api";
 let selector: WalletSelector | null = null;
 let modal: WalletSelectorModal | null = null;
 
+/**
+ * End-to-end tests drive a real testnet account through this bridge instead of a wallet UI: the
+ * Playwright test exposes `__veyraE2E` and signs each transaction in Node with a key from its own
+ * environment. Only a page whose test harness defines it can use it; it never holds a key here.
+ */
+type E2E = { accountId: string; sign: (txsJson: string) => Promise<string[]> };
+const e2e = () => (globalThis as { __veyraE2E?: E2E }).__veyraE2E;
+let e2eOn = false;
+const e2eListeners = new Set<(a: string | null) => void>();
+const e2eNotify = () => { for (const f of e2eListeners) f(e2eOn ? e2e()!.accountId : null); };
+
 export async function initWallet(network: "testnet" | "mainnet") {
+  if (e2e()) { try { e2eOn = localStorage.getItem("near-wallet-selector:selectedWalletId") === "e2e"; } catch { /* storage blocked */ } return null; }
   if (selector) return selector;
   selector = await setupWalletSelector({
     network,
@@ -28,14 +40,17 @@ export async function initWallet(network: "testnet" | "mainnet") {
 }
 
 export function showWalletModal() {
+  if (e2e()) { e2eOn = true; try { localStorage.setItem("near-wallet-selector:selectedWalletId", "e2e"); } catch { /* storage blocked */ } e2eNotify(); return; }
   modal?.show();
 }
 
 export function connectedAccount(): string | null {
+  if (e2e()) return e2eOn ? e2e()!.accountId : null;
   return selector?.store.getState().accounts.find((a) => a.active)?.accountId ?? null;
 }
 
 export function onAccountChange(fn: (accountId: string | null) => void) {
+  if (e2e()) { e2eListeners.add(fn); return { unsubscribe: () => e2eListeners.delete(fn) }; }
   return selector?.store.observable.subscribe((s) => fn(s.accounts.find((a) => a.active)?.accountId ?? null));
 }
 
@@ -45,6 +60,7 @@ async function wallet() {
 }
 
 export async function disconnect() {
+  if (e2e()) { e2eOn = false; try { localStorage.removeItem("near-wallet-selector:selectedWalletId"); } catch { /* storage blocked */ } e2eNotify(); return; }
   if (selector?.isSignedIn()) await (await wallet()).signOut();
 }
 
@@ -78,6 +94,7 @@ export async function signOwnerIntent(intent: OwnerIntent["intent"]) {
 
 /** Signs and sends prepared transactions; returns their hashes. */
 export async function signAndSend(txs: WalletTx[]): Promise<string[]> {
+  if (e2e()) return e2e()!.sign(JSON.stringify(txs));
   const w = await wallet();
   const outcomes = await w.signAndSendTransactions({ transactions: txs as never });
   return (outcomes ?? []).map((o: any) => o.transaction?.hash ?? o.transaction_outcome?.id);

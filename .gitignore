@@ -157,3 +157,5 @@ apps/web/dist/
 *.db-wal
 *.db-shm
 dev-encryption.key
+apps/web/test-results/
+apps/web/playwright-report/

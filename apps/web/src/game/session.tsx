@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router";
 import { useApi } from "../lib/data";
 import { heistWallet, loadProgress, saveProgress, type Account, type Lobby, type Player, type Progress } from "./heist-api";
 
@@ -70,4 +71,17 @@ export function HeistProvider({ children }: { children: ReactNode }) {
     acct: acctApi.data, reloadAccount: acctApi.reload, progress, setProgress, me: meApi.data, reloadMe: meApi.reload, cracked, sound, setSound,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+/**
+ * Sets or clears search params against the live URL. react-router's functional setter sees the
+ * params of the render that created it, so callbacks kept by a sheet would undo newer changes.
+ */
+export function useSetParams() {
+  const [, setParams] = useSearchParams();
+  return useCallback((changes: Record<string, string | null>) => {
+    const n = new URLSearchParams(window.location.search);
+    for (const [k, v] of Object.entries(changes)) { if (v === null || v === "") n.delete(k); else n.set(k, v); }
+    setParams(n, { replace: true });
+  }, [setParams]);
 }

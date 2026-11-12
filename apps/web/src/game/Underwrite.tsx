@@ -9,7 +9,7 @@ import { FAUCET_URL } from "./errors";
 import { Explain } from "./explain";
 import { nearNum, toYoctoNear, type Vault } from "./heist-api";
 import { backPlan, withdrawPlan } from "./plans";
-import { useHeist } from "./session";
+import { useHeist, useSetParams } from "./session";
 import { useTx } from "./tx";
 
 /**
@@ -20,12 +20,13 @@ export default function Underwrite() {
   const h = useHeist();
   const { lobby, acct } = h;
   const tx = useTx();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const [amount, setAmount] = useState<Record<number, string>>({});
   // optimistic stakes: shown at once, rolled back if the transaction fails
   const [optimistic, setOptimistic] = useState<Record<number, bigint>>({});
   useEffect(() => { document.title = "Back a vault · Veyra Heist"; }, []);
-  const clear = () => setParams((p) => { const n = new URLSearchParams(p); n.delete("back"); n.delete("withdraw"); n.delete("amount"); return n; }, { replace: true });
+  const setP = useSetParams();
+  const clear = () => setP({ back: null, withdraw: null, amount: null });
   const refresh = async () => { invalidate("/heist"); await Promise.all([lobby.reload(), h.reloadAccount()]); };
 
   const backV = Number(params.get("back")) || null;
@@ -77,8 +78,8 @@ export default function Underwrite() {
 
       <div className="grid-3">
         {vaults.map((v) => <BackCard key={v.id} v={v} amount={amount[v.id] ?? "0.5"} setAmount={(x) => setAmount({ ...amount, [v.id]: x })} optimistic={optimistic[v.id]} busy={tx.busy}
-          onBack={(amt) => setParams((p) => { const n = new URLSearchParams(p); n.set("back", String(v.id)); n.set("amount", amt); return n; }, { replace: true })}
-          onWithdraw={() => setParams((p) => { const n = new URLSearchParams(p); n.set("withdraw", String(v.id)); return n; }, { replace: true })} />)}
+          onBack={(amt) => setP({ back: String(v.id), amount: amt })}
+          onWithdraw={() => setP({ withdraw: String(v.id) })} />)}
       </div>
     </div>
   );
