@@ -16,10 +16,12 @@ import { SecretBox } from "../lib/crypto.js";
 import { LIVE_MARKET, MarketCatalog } from "../market/catalog.js";
 import { X402Caller } from "../market/x402.js";
 import { Watchtower } from "../watchtower/scanner.js";
+import { analyticsMarkdown, marketAnalytics } from "../watchtower/analytics.js";
 
 const db = new Db(":memory:");
 const catalog = new MarketCatalog(LIVE_MARKET);
-const wt = new Watchtower(db, catalog, new X402Caller(LIVE_MARKET), new ContractorGuard(db), new ReceiptService(db, SecretBox.fromConfig({ production: false, devKeyPath: ":memory:" }), null), null, LIVE_MARKET.origin);
+const guard = new ContractorGuard(db);
+const wt = new Watchtower(db, catalog, new X402Caller(LIVE_MARKET), guard, new ReceiptService(db, SecretBox.fromConfig({ production: false, devKeyPath: ":memory:" }), null), null, LIVE_MARKET.origin);
 
 const started = Date.now();
 console.log(`WATCHTOWER scanning ${LIVE_MARKET.origin} (read-only, no payments)…`);
@@ -42,6 +44,8 @@ for (const r of rows.filter((x) => x.verdict === "flagged")) console.log(`  FLAG
 const outDir = join(dirname(fileURLToPath(import.meta.url)), "../../../../docs/watchtower");
 mkdirSync(outDir, { recursive: true });
 const generatedAt = new Date().toISOString();
+const analytics = marketAnalytics(db, guard);
+if (analytics) writeFileSync(join(outDir, "analytics.md"), analyticsMarkdown(analytics));
 writeFileSync(join(outDir, "latest.json"), JSON.stringify({ generatedAt, origin: LIVE_MARKET.origin, summary: { total: s.total, ok: s.ok, warn: s.warn, flagged: s.flagged, offline: s.offline }, treasury: (latest.scan as { treasury: unknown }).treasury, findingsByCheck: Object.fromEntries(byCheck), agents: rows }, null, 2));
 const md = [
   "# Watchtower report: NEAR AI Agent Market",

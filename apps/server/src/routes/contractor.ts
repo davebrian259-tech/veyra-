@@ -7,6 +7,7 @@ import { verifyMarketWebhook } from "../market/worker.js";
 import type { Scheduler } from "../scheduler.js";
 import { body, params, query, requireUser, SESSION_COOKIE } from "./http.js";
 import { mandateHash, mandateMessage, mandateSchema } from "../contractor/mandate.js";
+import { marketAnalytics } from "../watchtower/analytics.js";
 import { randomToken, sha256Hex } from "../lib/crypto.js";
 import { now } from "../db.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -165,6 +166,31 @@ export function contractorRoutes(app: FastifyInstance, ctx: AppContext, schedule
   app.get("/watchtower", async () => ctx.watchtower.latest());
   app.get("/watchtower/agents/:handle", async (req) => ctx.watchtower.lookup(params(req).handle));
   app.get("/watchtower/evidence/:hash", async (req) => ctx.watchtower.evidence(params(req).hash));
+  app.get("/watchtower/analytics", async (req) => marketAnalytics(ctx.db, ctx.guard, query(z.object({ scan: z.string().optional() }), req).scan) ?? { scan: null });
+
+  // -------------------------------------------------------------- evidence (public): what is on-chain, with links
+  app.get("/evidence", async () => {
+    const L = ctx.ledger;
+    const anchors = ctx.receipts.anchors() as { id: string; root: string; from_seq: number; to_seq: number; count: number; tx_hash: string | null; status: string; created_at: string }[];
+    const reports = ctx.db.all<{ handle: string; report_ref: string; evidence_hash: string; scan_id: string; created_at: string }>("SELECT handle, report_ref, evidence_hash, scan_id, created_at FROM watch_results WHERE report_ref IS NOT NULL ORDER BY created_at DESC LIMIT 50");
+    const scans = ctx.db.all<{ id: string; origin: string; finished_at: string; total: number; flagged: number; root: string | null; receipt_id: string | null }>("SELECT id, origin, finished_at, total, flagged, root, receipt_id FROM watch_scans WHERE status = 'done' ORDER BY started_at DESC LIMIT 10");
+    let onChain: { anchors: number; reports: number; latest: unknown } | null = null;
+    if (L?.rpc) {
+      onChain = await Promise.all([L.rpc.view<number>(L.contractId, "count", {}), L.rpc.view<number>(L.contractId, "report_count", {}), L.rpc.view<unknown>(L.contractId, "latest", {})])
+        .then(([a, r, latest]) => ({ anchors: a, reports: r, latest })).catch(() => null);
+    }
+    const tx = (h: string | null) => (h && L?.explorer ? `${L.explorer}/txns/${h}` : null);
+    return {
+      ledger: L ? { contractId: L.contractId, network: L.network, explorer: L.explorer ? `${L.explorer}/address/${L.contractId}` : null, onChain } : null,
+      receiptIssuer: ctx.receipts.publicKey(),
+      anchors: anchors.map((a) => ({ ...a, link: tx(a.tx_hash) })),
+      reports: reports.map((r) => ({ ...r, link: tx(r.report_ref) })),
+      scans,
+      mode: ctx.config.VEYRA_MODE,
+      watchtowerOrigin: ctx.config.VEYRA_MODE === "sim" && ctx.config.WATCHTOWER_LIVE ? ctx.config.MARKET_ORIGIN : null,
+    };
+  });
+
   app.get("/watchtower/agents/:handle/proof", async (req) => ctx.watchtower.proof(params(req).handle, query(z.object({ scan: z.string().optional() }), req).scan));
   app.post("/watchtower/scan", async (req) => {
     requireUser(ctx, req);

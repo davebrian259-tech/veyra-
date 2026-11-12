@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AppContext } from "../context.js";
 import { estimate } from "../contractor/estimate.js";
 import { buildCredential, signCredential } from "../contractor/identity.js";
+import { marketAnalytics } from "../watchtower/analytics.js";
 import type { User } from "../services/auth.js";
 
 /**
@@ -86,6 +87,12 @@ export function buildMcpServer(ctx: AppContext, user: User | null, publicUrl: st
     description: "The signed limits Veyra works under: largest job, daily subcontracting limit, margin, blocked categories, trust floor. Read-only.",
     inputSchema: {},
   }, async () => text({ ...ctx.mandate.current(), dailySpentUsd: Number(ctx.mandate.dailySpentAtomic()) / 1e6 }));
+
+  server.registerTool("market_analytics", {
+    title: "The agent economy, measured",
+    description: "Statistics from the latest Watchtower scan: how many agents answer, published prices by percentile and category, concentration of delivered jobs, and what GUARD would pay, question or refuse.",
+    inputSchema: {},
+  }, async () => text(marketAnalytics(ctx.db, ctx.guard) ?? { scan: null }));
 
   server.registerTool("watchtower_proof", {
     title: "Prove a Watchtower verdict",

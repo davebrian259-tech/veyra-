@@ -118,11 +118,16 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
   const treasury = new Treasury(db, spend, vault, usdc, audit, BigInt(Math.round(config.MAX_FLOAT_USDC * 1e6)));
 
   // ---------------------------------------------------------------- receipts & anchoring
+  // A real ledger contract is used whenever one is configured, in the simulator too: anchors
+  // and threat reports from the hosted demo land on testnet for free.
+  const ledgerRpc = config.LEDGER_NETWORK === "mainnet" ? mainnetRpc : new NearRpc("https://rpc.testnet.near.org", o.fetch);
+  const ledger = config.LEDGER_CONTRACT_ID
+    ? { contractId: config.LEDGER_CONTRACT_ID, network: config.LEDGER_NETWORK, explorer: config.LEDGER_NETWORK === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io", rpc: ledgerRpc }
+    : simChain ? { contractId: "ledger.veyra.sim", network: "sim", explorer: null, rpc: null } : null;
   let anchorer: Anchorer | null = null;
-  if (simChain) {
+  if (simChain && !config.LEDGER_CONTRACT_ID) {
     anchorer = { network: "sim", contractId: "ledger.veyra.sim", anchor: async (root, from, to, count) => simChain.record("ledger_anchor", { root, from, to, count }) };
   } else if (config.LEDGER_CONTRACT_ID) {
-    const ledgerRpc = config.LEDGER_NETWORK === "mainnet" ? mainnetRpc : new NearRpc("https://rpc.testnet.near.org", o.fetch);
     anchorer = {
       network: config.LEDGER_NETWORK,
       contractId: config.LEDGER_CONTRACT_ID,
@@ -141,10 +146,9 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
 
   // ---------------------------------------------------------------- threat reports (veyra-ledger `report`)
   let reporter: ThreatReporter | null = null;
-  if (simChain) {
+  if (simChain && !config.LEDGER_CONTRACT_ID) {
     reporter = { target: "ledger.veyra.sim", report: async (subject, kind, evidenceHash) => simChain.record("ledger_report", { subject, kind, evidenceHash }) };
   } else if (config.LEDGER_CONTRACT_ID) {
-    const ledgerRpc = config.LEDGER_NETWORK === "mainnet" ? mainnetRpc : new NearRpc("https://rpc.testnet.near.org", o.fetch);
     reporter = {
       target: `${config.LEDGER_CONTRACT_ID} (${config.LEDGER_NETWORK})`,
       report: async (subject, kind, evidenceHash) => {
@@ -164,7 +168,12 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
     ? new MarketWorker(SIM_ENDPOINTS.origin, SIM_WORKER_TOKEN, marketFetch)
     : config.MARKET_WORKER_TOKEN ? new MarketWorker(config.MARKET_ORIGIN, config.MARKET_WORKER_TOKEN, o.fetch) : null;
   const board = (): JobBoard | null => (simMarket ? simMarket.jobBoard(SIM_OWNER_ACCOUNT) : oauth.connected ? mcpBoard : null);
-  const watchtower = new Watchtower(db, catalog, x402, guard, receipts, reporter, endpoints.origin);
+  // The simulator can audit the real market: read-only, free, and the most honest demo there is.
+  const liveEndpoints = { ...LIVE_MARKET, origin: config.MARKET_ORIGIN };
+  const wtLive = sim && config.WATCHTOWER_LIVE;
+  const wtCatalog = wtLive ? new MarketCatalog(liveEndpoints, o.fetch ?? fetch) : catalog;
+  const wtX402 = wtLive ? new X402Caller(liveEndpoints, o.fetch ?? fetch) : x402;
+  const watchtower = new Watchtower(db, wtCatalog, wtX402, guard, receipts, reporter, wtLive ? liveEndpoints.origin : endpoints.origin);
   const mandate = new MandateService(db, { maxJobUsd: 25, maxDailyUsd: 50, marginBps: config.CONTRACT_MARGIN_BPS, blockedCategories: [], minTrust: 25 });
   const engineDeps: import("./contractor/engine.js").EngineDeps = {
     db, catalog, x402, board, worker: () => worker, treasury, guard, brain, receipts, audit, notifier, mandate,
@@ -188,7 +197,7 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
 
   return {
     config, db, secrets, rpc, audit, notifier, tokens, auth, bodyguard, agents, execution, ai, nearAi,
-    catalog, x402, chain, spend, treasury, vault, oauth, mcpBoard, receipts, guard, brain, engine, worker, watchtower, mandate, seller,
+    catalog, x402, chain, spend, treasury, vault, oauth, mcpBoard, receipts, guard, brain, engine, worker, watchtower, mandate, seller, ledger,
     sim: simChain && simMarket ? { chain: simChain, market: simMarket } : null,
     ownerUser,
   };

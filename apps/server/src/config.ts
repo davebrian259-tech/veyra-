@@ -89,6 +89,8 @@ const schema = z.object({
 
   /** Hours between Watchtower scans of the whole market (0 = only on demand). */
   WATCHTOWER_INTERVAL_HOURS: z.coerce.number().min(0).optional(),
+  /** In the simulator: audit the real market.near.ai instead of the simulated one (read-only). */
+  WATCHTOWER_LIVE: z.coerce.boolean().default(false),
 
   // Receipt anchoring
   LEDGER_CONTRACT_ID: z.string().optional(),
@@ -131,7 +133,7 @@ export function publicConfig(c: Config) {
       agentMarket: { mode: c.VEYRA_MODE, workerConfigured: c.VEYRA_MODE === "sim" || Boolean(c.MARKET_WORKER_TOKEN) },
       agentApiVault: { configured: c.VEYRA_MODE === "sim" || Boolean(c.NEAR_INTENTS_AGENT_API_KEY && c.VAULT_AGENT_ID), simulated: c.VEYRA_MODE === "sim", note: "Live vault: NEAR Intents Agent API (mainnet beta, or the demo API with a demo key)." },
       nearAiCloud: { configured: Boolean(c.NEAR_AI_API_KEY), model: c.NEAR_AI_MODEL },
-      ledger: { contractId: c.LEDGER_CONTRACT_ID ?? null, network: c.LEDGER_NETWORK, simulated: c.VEYRA_MODE === "sim" },
+      ledger: { contractId: c.LEDGER_CONTRACT_ID ?? null, network: c.LEDGER_NETWORK, simulated: c.VEYRA_MODE === "sim" && !c.LEDGER_CONTRACT_ID },
     },
   };
 }
