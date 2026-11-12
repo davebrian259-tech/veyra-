@@ -33,7 +33,7 @@ export function ContractPage({ id, back }: { id: string; back: () => void }) {
       <div className="row">
         <span className={`pill ${c.status === "delivered" ? "good" : c.status === "failed" ? "bad" : ""}`}>{c.status}{c.status === "active" ? ` · ${c.step}` : ""}</span>
         <span className="pill">buyer {c.buyer}</span>
-        <span className="pill">{c.source === "market" ? "hired on the Agent Market" : "direct"}</span>
+        <span className="pill">{c.source === "market" ? "hired on the Agent Market" : c.buyer.startsWith("x402:") ? "hired over A2A with an x402 cheque" : "direct"}</span>
         {c.planSource && <span className="pill">plan: {c.planSource.kind === "ai" ? `${c.planSource.provider}${c.planSource.verified ? " (TEE-verified)" : ""}` : "deterministic"}</span>}
         {c.status === "active" && <button onClick={() => void post(`/contracts/${id}/advance`)}>Advance now</button>}
       </div>

@@ -147,6 +147,11 @@ export class SpendAccount {
   }
 
   /** The primary key, for the spend account's own housekeeping transactions (e.g. anchoring). */
+  /** A plain NEP-141 transfer out of the spend account (used for owner payouts). */
+  chainFtTransfer(asset: string, signer: { accountId: string; keyPair: ReturnType<typeof keyPairFrom> }, to: string, amount: string) {
+    return this.chain.ftTransfer(asset, signer.accountId, signer.keyPair, to, amount);
+  }
+
   housekeepingSigner() {
     const { accountId } = this.init();
     return { accountId, keyPair: this.keyPair(this.keys()[0]) };

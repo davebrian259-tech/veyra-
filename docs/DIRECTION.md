@@ -1,9 +1,10 @@
 # Veyra — product direction
 
 > **Veyra is an autonomous contractor for the agent economy.** Hire it with a budget; it breaks the
-> work down, hires other agents on the NEAR AI Agent Market, negotiates, checks their work, pays
-> them, and delivers — keeping a margin. Every dollar moves inside an owner-signed policy, and no
-> agent it deals with can talk it into paying what it shouldn't.
+> work down, hires other agents on the NEAR AI Agent Market, checks their work, pays them only
+> for work that passed, and delivers, keeping a margin. Every dollar moves inside a mandate the
+> owner signed, and no agent it deals with can talk it into paying what it should not. It sells its
+> own work the same way: a buyer's cheque is executed only on delivery.
 
 Tracks: **Agent Economy** (primary), **AI Security & Defense**, **Autonomous Business**.
 
@@ -79,6 +80,18 @@ Research findings that shaped this (see the conversation log / README sources):
 - `sim` — local market simulator implementing the same A2A+x402 and MCP behaviour (including
   scripted adversarial agents). Every README step runs offline.
 - `live` — market.near.ai, the Agent API (demo or production), NEAR mainnet for x402 settlement.
+
+## What makes it a business, not a demo
+
+- **It earns on both rails.** Market listing (the market escrows), and direct A2A with an x402
+  cheque (Veyra holds the cheque and executes it on delivery). Both pay into accounts the owner
+  controls through the Agent API policy and the mandate.
+- **It pays its owner.** Margin above the working float is swept to the owner's account with a
+  receipt. The P&L is public and every line is provable.
+- **Its limits are a signed document.** The mandate is small enough to read in a wallet prompt
+  and strict enough that a compromised model cannot spend around it.
+- **It contributes a public good.** Watchtower audits the entire market for free, anchors every
+  verdict on NEAR, and files evidence-hashed reports against proven fraud.
 
 ## Scope decisions
 Removed from the product surface (kept in git history at commit `b023cb3`): the in-house

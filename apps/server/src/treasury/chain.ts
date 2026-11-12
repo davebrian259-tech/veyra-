@@ -1,4 +1,5 @@
-import { actionCreators } from "@near-js/transactions";
+import { actionCreators, SCHEMA, type SignedDelegate } from "@near-js/transactions";
+import { deserialize } from "borsh";
 import type { KeyPair } from "@near-js/crypto";
 import { PublicKey } from "@near-js/crypto";
 import type { NearRpc } from "../lib/near-rpc.js";
@@ -20,7 +21,11 @@ export interface Chain {
   registerStorage(token: string, payerId: string, payer: KeyPair, accountId: string): Promise<string | null>;
   /** Sends `amount` of a NEP-141 token. */
   ftTransfer(token: string, fromId: string, signer: KeyPair, to: string, amount: string): Promise<string>;
+  /** Executes a NEP-366 signed delegate action (an x402 cheque). `relayer` pays the gas. */
+  relay(signedDelegateBase64: string, relayer: { accountId: string; keyPair: KeyPair }): Promise<RelayResult>;
 }
+
+export type RelayResult = { ok: true; hash: string } | { ok: false; error: string };
 
 export class LiveChain implements Chain {
   constructor(readonly network: string, private readonly rpc: NearRpc) {}
@@ -70,5 +75,16 @@ export class LiveChain implements Chain {
       actionCreators.functionCall("ft_transfer", { receiver_id: to, amount }, 30_000_000_000_000n, 1n),
     ]);
     return r.transaction.hash;
+  }
+
+  /** A meta-transaction: the relayer sends the buyer's SignedDelegate to the buyer's account and pays the gas. */
+  async relay(signedDelegateBase64: string, relayer: { accountId: string; keyPair: KeyPair }): Promise<RelayResult> {
+    try {
+      const sd = deserialize(SCHEMA.SignedDelegate, Buffer.from(signedDelegateBase64, "base64")) as SignedDelegate;
+      const r = await sendTransaction(this.rpc, relayer.accountId, relayer.keyPair, sd.delegateAction.senderId, [actionCreators.signedDelegate(sd)]);
+      return { ok: true, hash: r.transaction.hash };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
   }
 }

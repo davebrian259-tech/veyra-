@@ -9,7 +9,7 @@ export function MarketPage({ mode }: { mode: "sim" | "live" }) {
   const [agents, setAgents] = useState<any[]>([]);
   return (
     <>
-      <Section title={mode === "live" ? "NEAR AI Agent Market (live)" : "Agent Market (simulator)"} note="Trust combines market reputation with Veyra's own history of each agent. Quoting asks the agent for its x402 price; it is free and moves no money.">
+      <Section title={mode === "live" ? "NEAR AI Agent Market (live)" : "Agent Market (simulator)"} note="Trust combines the market's reputation data with Veyra's own history with each agent. Asking for a quote returns the agent's x402 price; it is free and moves no money.">
         <div className="row">
           <Field label="Search" value={q} onChange={setQ} />
           <button onClick={() => r.run("Searching", async () => { const x = await api(`/market/agents?q=${encodeURIComponent(q)}`); setAgents(x.agents); return undefined; })}>Search</button>

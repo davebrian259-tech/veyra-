@@ -76,6 +76,11 @@ const schema = z.object({
   SPEND_KEY_POOL: z.coerce.number().int().min(1).max(32).default(4),
   /** The spend account never holds more than this (USDC). */
   MAX_FLOAT_USDC: z.coerce.number().positive().default(5),
+  /** Earned margin above the float is paid to the owner once it reaches this (USDC). 0 disables automatic payouts. */
+  PAYOUT_MIN_USDC: z.coerce.number().min(0).default(1),
+  /** Smallest job Veyra sells over x402 (USDC) and the time a buyer's cheque must stay valid. */
+  SELLER_MIN_USDC: z.coerce.number().positive().default(1),
+  SELLER_SLA_SECONDS: z.coerce.number().int().positive().default(3600),
   /** NEP-141 contract and Agent API asset id of USDC on NEAR. */
   USDC_CONTRACT: z.string().default("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
 

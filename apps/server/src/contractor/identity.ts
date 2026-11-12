@@ -27,7 +27,7 @@ export function buildCredential(ctx: AppContext, publicUrl: string) {
       name: "Veyra",
       role: "autonomous contractor on the NEAR AI Agent Market",
       mode: ctx.config.VEYRA_MODE,
-      endpoints: { api: publicUrl, mcp: `${publicUrl}/mcp`, agentCard: `${publicUrl}/.well-known/agent-card.json`, ledger: `${publicUrl}/ledger` },
+      endpoints: { api: publicUrl, mcp: `${publicUrl}/mcp`, a2a: `${publicUrl}/a2a/v1`, x402: `${publicUrl}/.well-known/x402`, agentCard: `${publicUrl}/.well-known/agent-card.json`, ledger: `${publicUrl}/ledger` },
     },
     principal: owner ? { nearAccount: owner.accountId } : null,
     controls: {
@@ -36,7 +36,10 @@ export function buildCredential(ctx: AppContext, publicUrl: string) {
       maxFloatUsdc: ctx.config.MAX_FLOAT_USDC,
       marginBps: ctx.config.CONTRACT_MARGIN_BPS,
       frozen: ctx.engine.frozen(),
+      mandate: { version: ctx.mandate.current().version, hash: ctx.mandate.current().hash, signedBy: ctx.mandate.current().signedBy, ...ctx.mandate.current().mandate },
       paysOnlyTo: "the market treasury published at /.well-known/x402, at listed prices",
+      paidAt: ctx.spend.accountId,
+      settlement: "x402: a buyer's cheque is executed only when the job is delivered",
     },
     accountability: {
       receiptIssuer: ctx.receipts.publicKey(),
@@ -75,14 +78,18 @@ export function agentCard(ctx: AppContext, publicUrl: string) {
   return {
     name: "Veyra",
     description: "Autonomous contractor: hire it with a budget; it subcontracts specialist agents on the NEAR AI Agent Market, checks their work, pays them in USDC within an owner-signed policy, and delivers with signed receipts.",
-    url: `${publicUrl}/mcp`,
-    version: "1.0.0",
+    url: `${publicUrl}/a2a/v1`,
+    version: "1.1.0",
     provider: { organization: "Veyra", url: publicUrl },
+    supportedInterfaces: [
+      { url: `${publicUrl}/a2a/v1`, protocol: "A2A JSON-RPC", payment: "x402 v2 on NEAR: pay with a NEP-366 cheque to the payee at /.well-known/x402; it is executed only on delivery" },
+      { url: `${publicUrl}/mcp`, protocol: "MCP streamable HTTP" },
+    ],
     capabilities: { streaming: false, pushNotifications: false },
     defaultInputModes: ["text/plain"],
     defaultOutputModes: ["text/markdown", "application/json"],
     skills: [
-      { id: "contracting", name: "Contract a job", description: "Plan, subcontract, verify and deliver research, data and writing jobs within a budget.", tags: ["research", "writing", "data", "subcontracting"] },
+      { id: "contracting", name: "Contract a job", description: "Plan, subcontract, verify and deliver research, data and writing jobs within a budget. Pay with an x402 cheque; you are charged only on delivery.", tags: ["research", "writing", "data", "subcontracting", "x402"] },
       { id: "estimate", name: "Price a job", description: "Live market quotes and a GUARD verdict for every candidate agent, without spending.", tags: ["pricing", "x402"] },
       { id: "watchtower", name: "Check a counterparty", description: "Payment-integrity check of any Agent Market agent against published prices and the market treasury.", tags: ["security", "reputation"] },
       { id: "receipts", name: "Verify a receipt", description: "Signature, hash and Merkle proof of any Veyra receipt against its on-chain anchor.", tags: ["audit"] },

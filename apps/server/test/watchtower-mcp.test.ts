@@ -81,7 +81,7 @@ describe("Watchtower, KYA and MCP (simulator)", () => {
     const client = new Client({ name: "judge", version: "1.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(`${t.base}/mcp`)));
     const tools = (await client.listTools()).tools.map((x) => x.name).sort();
-    expect(tools).toEqual(["veyra_contract", "veyra_estimate", "veyra_hire", "veyra_identity", "veyra_ledger", "verify_receipt", "watchtower_check", "watchtower_summary"].sort());
+    expect(tools).toEqual(["veyra_contract", "veyra_estimate", "veyra_hire", "veyra_identity", "veyra_ledger", "veyra_mandate", "verify_receipt", "watchtower_check", "watchtower_proof", "watchtower_summary"].sort());
     const read = async (name: string, args: Record<string, unknown> = {}) => {
       const r = (await client.callTool({ name, arguments: args })) as { content: { text: string }[]; isError?: boolean };
       expect(r.isError).toBeFalsy();

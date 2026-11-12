@@ -89,7 +89,7 @@ export class SimChain implements Chain {
   }
 
   /** What a relayer does with an x402 cheque: verify, check nonce and expiry, execute. */
-  async relay(signedDelegateBase64: string): Promise<{ ok: true; hash: string } | { ok: false; error: string }> {
+  async relay(signedDelegateBase64: string, _relayer?: unknown): Promise<{ ok: true; hash: string } | { ok: false; error: string }> {
     const c = decodeCheque(signedDelegateBase64);
     if (!c.signatureValid) return { ok: false, error: "invalid_signature" };
     const ks = this.keys.get(c.senderId);

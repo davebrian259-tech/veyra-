@@ -44,6 +44,10 @@ export class Scheduler {
         for (const op of execution.pendingAgentOps()) await safe(`vault op ${op.id}`, async () => execution.applyStatus(op.id, await agents.api().getStatus(op.correlation_id!)));
       }
       if (this.tick % 60 === 0) await safe("anchor", () => receipts.anchorPending());
+      if (this.tick % 30 === 0 && this.ctx.config.PAYOUT_MIN_USDC > 0) {
+        const owner = this.ctx.ownerUser();
+        if (owner) await safe("payout", () => this.ctx.treasury.payout(owner.accountId, receipts, BigInt(Math.round(this.ctx.config.PAYOUT_MIN_USDC * 1e6)), "scheduler"));
+      }
       const hours = this.ctx.config.WATCHTOWER_INTERVAL_HOURS;
       if (hours > 0) {
         const last = this.ctx.db.get<{ started_at: string }>("SELECT started_at FROM watch_scans ORDER BY started_at DESC LIMIT 1");

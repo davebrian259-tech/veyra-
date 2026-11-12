@@ -6,7 +6,7 @@ import { planPriceAtomic, type MarketCatalog } from "../market/catalog.js";
 import type { MarketAgent, PricingPlan, TreasuryRecipient, X402Challenge } from "../market/types.js";
 import type { X402Caller } from "../market/x402.js";
 import type { ContractorGuard } from "../contractor/guard.js";
-import type { ReceiptService } from "../contractor/receipts.js";
+import { leafHash, merkleProof, merkleRoot, verifyProof, type ReceiptService } from "../contractor/receipts.js";
 
 /**
  * WATCHTOWER — integrity surveillance for the whole Agent Market.
@@ -41,6 +41,10 @@ export interface AgentResult {
   findings: Finding[];
   evidenceHash: string | null;
 }
+
+/** The bytes that stand for one verdict in the scan's Merkle tree. */
+export const rowHash = (scanId: string, r: AgentResult, at: string) =>
+  sha256Hex(canonicalJson({ scanId, at, handle: r.handle, agentId: r.agentId, verdict: r.verdict, quotedAtomic: r.quotedAtomic, listedAtomic: r.listedAtomic, payTo: r.payTo, network: r.network, findings: r.findings, evidenceHash: r.evidenceHash }));
 
 export interface ThreatReporter {
   readonly target: string;
@@ -149,17 +153,22 @@ export class Watchtower {
         return r;
       });
       const counts = { ok: 0, warn: 0, flagged: 0, offline: 0 };
+      const at = now();
+      results.sort((a, b) => a.handle.localeCompare(b.handle)); // leaf order is the handle order
       for (const r of results) {
         counts[r.verdict]++;
         this.db.run(
-          `INSERT INTO watch_results (scan_id, handle, agent_id, name, category, verdict, quoted_atomic, listed_atomic, pay_to, network, delivered_jobs, trust, findings_json, evidence_hash, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [id, r.handle, r.agentId, r.name, r.category, r.verdict, r.quotedAtomic, r.listedAtomic, r.payTo, r.network, r.deliveredJobs, r.trust, json(r.findings), r.evidenceHash, now()],
+          `INSERT INTO watch_results (scan_id, handle, agent_id, name, category, verdict, quoted_atomic, listed_atomic, pay_to, network, delivered_jobs, trust, findings_json, evidence_hash, row_hash, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [id, r.handle, r.agentId, r.name, r.category, r.verdict, r.quotedAtomic, r.listedAtomic, r.payTo, r.network, r.deliveredJobs, r.trust, json(r.findings), r.evidenceHash, rowHash(id, r, at), at],
         );
         if (r.verdict === "flagged") await this.fileReport(id, r);
       }
-      this.db.run("UPDATE watch_scans SET finished_at = ?, total = ?, ok = ?, warn = ?, flagged = ?, offline = ?, treasury_json = ?, status = 'done' WHERE id = ?", [
-        now(), results.length, counts.ok, counts.warn, counts.flagged, counts.offline, json(treasury), id,
+      // One Merkle root over every verdict; its receipt is anchored on NEAR with the others.
+      const root = results.length ? merkleRoot(results.map((r) => leafHash(rowHash(id, r, at)))) : null;
+      const receipt = root ? this.receipts.issue("watchtower_scan", "watchtower", null, { scanId: id, origin: this.origin, root, total: results.length, ...counts, treasury }) : null;
+      this.db.run("UPDATE watch_scans SET finished_at = ?, total = ?, ok = ?, warn = ?, flagged = ?, offline = ?, treasury_json = ?, root = ?, receipt_id = ?, status = 'done' WHERE id = ?", [
+        now(), results.length, counts.ok, counts.warn, counts.flagged, counts.offline, json(treasury), root, receipt?.id ?? null, id,
       ]);
       await this.receipts.anchorPending().catch(() => undefined);
       return { id, total: results.length, ...counts };
@@ -211,6 +220,29 @@ export class Watchtower {
       counterparty: this.guard.counterparty(handle),
       history: history.map((h) => ({ ...h, findings: parse(h.findings_json as string), findings_json: undefined })),
       safeToPay: fresh.verdict !== "flagged" && !this.guard.counterparty(handle).blocked,
+    };
+  }
+
+  /**
+   * Proof that an agent's verdict is part of an anchored scan: the row, its hash, the Merkle
+   * path to the scan root, and the receipt that carries the root to the ledger contract.
+   */
+  proof(handle: string, scanId?: string) {
+    const row = this.db.get<Record<string, unknown>>(
+      scanId ? "SELECT * FROM watch_results WHERE handle = ? AND scan_id = ?" : "SELECT * FROM watch_results WHERE handle = ? AND row_hash IS NOT NULL ORDER BY created_at DESC LIMIT 1",
+      scanId ? [handle, scanId] : [handle],
+    );
+    if (!row?.row_hash) throw notFound("anchored verdict");
+    const scan = this.db.get<{ id: string; root: string | null; receipt_id: string | null; finished_at: string }>("SELECT id, root, receipt_id, finished_at FROM watch_scans WHERE id = ?", [row.scan_id as string]);
+    const leaves = this.db.all<{ handle: string; row_hash: string }>("SELECT handle, row_hash FROM watch_results WHERE scan_id = ? ORDER BY handle", [row.scan_id as string]).map((l) => leafHash(l.row_hash));
+    const index = this.db.all<{ handle: string }>("SELECT handle FROM watch_results WHERE scan_id = ? ORDER BY handle", [row.scan_id as string]).findIndex((l) => l.handle === handle);
+    const path = merkleProof(leaves, index);
+    const valid = Boolean(scan?.root) && verifyProof(leaves[index], path, scan!.root!);
+    return {
+      handle, scanId: row.scan_id, scannedAt: scan?.finished_at ?? null,
+      verdict: { ...row, findings: parse(row.findings_json as string), findings_json: undefined },
+      rowHash: row.row_hash, index, path, root: scan?.root ?? null, valid,
+      receipt: scan?.receipt_id ? this.receipts.proof(scan.receipt_id) : null,
     };
   }
 

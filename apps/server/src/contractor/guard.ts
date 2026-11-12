@@ -25,6 +25,8 @@ export interface PaymentCheckInput {
   envelopeRemainingAtomic: bigint;
   agent: MarketAgent | null;
   frozen: boolean;
+  /** The owner's mandate, when the caller has one: daily cap, blocked categories, trust floor. */
+  mandate?: { maxDailyAtomic: bigint; dailySpentAtomic: bigint; blockedCategories: string[]; minTrust: number };
 }
 
 export interface CounterpartyRecord {
@@ -110,8 +112,20 @@ export class ContractorGuard {
     const local = this.counterparty(i.handle);
     if (local.blocked) f.push({ rule: "counterparty_blocked", severity: "block", message: `${i.handle} is blocked after a previous attack.` });
     const { score, reasons } = this.score(i.agent, i.handle);
-    if (score < 25) f.push({ rule: "low_trust_counterparty", severity: "block", message: `${i.handle} trust score ${score}/100 (${reasons.join("; ")}).` });
+    const floor = i.mandate?.minTrust ?? 25;
+    if (score < floor) f.push({ rule: "low_trust_counterparty", severity: "block", message: `${i.handle} trust score ${score}/100 is under the mandate floor of ${floor} (${reasons.join("; ")}).` });
     else if (score < 45) f.push({ rule: "unproven_counterparty", severity: "warn", message: `${i.handle} trust score ${score}/100 (${reasons.join("; ")}).` });
+
+    // The owner's mandate: a rolling daily limit and categories Veyra may never buy from.
+    if (i.mandate) {
+      if (i.mandate.dailySpentAtomic + BigInt(i.row.amount) > i.mandate.maxDailyAtomic) {
+        f.push({ rule: "over_daily_cap", severity: "block", message: `Paying ${fmt(i.row.amount)} USDC would exceed the mandate's daily limit of ${fmt(i.mandate.maxDailyAtomic)} USDC (${fmt(i.mandate.dailySpentAtomic)} spent in 24h).` });
+      }
+      const cat = i.agent?.category?.toLowerCase();
+      if (cat && i.mandate.blockedCategories.map((c) => c.toLowerCase()).includes(cat)) {
+        f.push({ rule: "category_blocked", severity: "block", message: `The mandate forbids buying from the "${i.agent?.category}" category.` });
+      }
+    }
 
     // No double payment: one cheque in flight per subtask. (A retry after a failed delivery is
     // a new purchase; the earlier settled payment is recorded and counted against the envelope.)

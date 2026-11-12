@@ -1,6 +1,8 @@
 import type { Db } from "../db.js";
 import { now } from "../db.js";
+import { randomId } from "../lib/crypto.js";
 import { conflict } from "../lib/errors.js";
+import type { ReceiptService } from "../contractor/receipts.js";
 import type { AgentService } from "../services/agents.js";
 import type { AuditLog } from "../services/audit.js";
 import type { User } from "../services/auth.js";
@@ -124,6 +126,36 @@ export class Treasury {
 
   async status() {
     const [spend, vaultBal] = await Promise.all([this.spend.status(this.asset), this.vault.balance().catch(() => null)]);
-    return { asset: this.asset, maxFloatAtomic: this.maxFloatAtomic.toString(), vault: { ...this.vault.describe(), balanceAtomic: vaultBal?.toString() ?? null }, spend };
+    const bal = BigInt((spend as { usdcAtomic?: string }).usdcAtomic ?? (await this.spend.usdcBalance(this.asset)).toString());
+    const surplus = bal > this.maxFloatAtomic ? bal - this.maxFloatAtomic : 0n;
+    return { asset: this.asset, maxFloatAtomic: this.maxFloatAtomic.toString(), vault: { ...this.vault.describe(), balanceAtomic: vaultBal?.toString() ?? null }, spend, surplusAtomic: surplus.toString(), payouts: this.payouts() };
+  }
+
+  payouts() {
+    return this.db.all("SELECT * FROM payouts ORDER BY created_at DESC LIMIT 50");
+  }
+
+  /**
+   * The business pays its owner. Whatever the spend account holds above the float is earned
+   * margin (x402 sales settle there); it goes to the owner's account and gets a receipt.
+   */
+  async payout(ownerAccountId: string, receipts: ReceiptService, minAtomic: bigint, by: "owner" | "scheduler") {
+    const bal = await this.spend.usdcBalance(this.asset);
+    const surplus = bal > this.maxFloatAtomic ? bal - this.maxFloatAtomic : 0n;
+    if (surplus < minAtomic) return { paid: false as const, surplusAtomic: surplus.toString(), reason: `surplus ${Number(surplus) / 1e6} USDC is below the ${Number(minAtomic) / 1e6} USDC minimum` };
+    const id = randomId("pay_");
+    this.db.run("INSERT INTO payouts (id, to_account, amount_atomic, asset, status, created_at) VALUES (?,?,?,?,?,?)", [id, ownerAccountId, surplus.toString(), this.asset, "pending", now()]);
+    try {
+      const signer = this.spend.housekeepingSigner();
+      const tx = await this.spend.chainFtTransfer(this.asset, signer, ownerAccountId, surplus.toString());
+      const r = receipts.issue("payout", "treasury", null, { to: ownerAccountId, amountAtomic: surplus.toString(), asset: this.asset, tx, by });
+      this.db.run("UPDATE payouts SET status = 'paid', tx_hash = ?, receipt_id = ? WHERE id = ?", [tx, r.id, id]);
+      this.audit.record({ actor: by === "owner" ? "user" : "system", action: "treasury.payout", subject: ownerAccountId, data: { amount: surplus.toString(), tx } });
+      return { paid: true as const, id, amountAtomic: surplus.toString(), tx, receiptId: r.id };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.db.run("UPDATE payouts SET status = 'failed', error = ? WHERE id = ?", [msg, id]);
+      throw conflict("payout_failed", msg);
+    }
   }
 }

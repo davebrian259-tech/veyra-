@@ -28,6 +28,8 @@ import { LiveChain, type Chain } from "./treasury/chain.js";
 import { SpendAccount } from "./treasury/spend-account.js";
 import { AgentApiVault, SimVault, Treasury, type Vault } from "./treasury/treasury.js";
 import { Watchtower, type ThreatReporter } from "./watchtower/scanner.js";
+import { MandateService } from "./contractor/mandate.js";
+import { X402Seller } from "./contractor/seller.js";
 
 export interface ContextOverrides {
   db?: Db;
@@ -163,11 +165,20 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
     : config.MARKET_WORKER_TOKEN ? new MarketWorker(config.MARKET_ORIGIN, config.MARKET_WORKER_TOKEN, o.fetch) : null;
   const board = (): JobBoard | null => (simMarket ? simMarket.jobBoard(SIM_OWNER_ACCOUNT) : oauth.connected ? mcpBoard : null);
   const watchtower = new Watchtower(db, catalog, x402, guard, receipts, reporter, endpoints.origin);
-  const engine = new ContractorEngine({
-    db, catalog, x402, board, worker: () => worker, treasury, guard, brain, receipts, audit, notifier,
+  const mandate = new MandateService(db, { maxJobUsd: 25, maxDailyUsd: 50, marginBps: config.CONTRACT_MARGIN_BPS, blockedCategories: [], minTrust: 25 });
+  const engineDeps: import("./contractor/engine.js").EngineDeps = {
+    db, catalog, x402, board, worker: () => worker, treasury, guard, brain, receipts, audit, notifier, mandate,
     ownerUserId: () => ownerUser()?.id ?? null,
     assumeCompromisedModel: config.assumeCompromisedModel,
+  };
+  const engine = new ContractorEngine(engineDeps);
+  // Veyra as a seller: other agents pay it with x402 cheques that settle on delivery.
+  const seller = new X402Seller({
+    db, chain, spend, engine, mandate, ownerUserId: engineDeps.ownerUserId,
+    network: sim ? "near:sim" : "near:mainnet", asset: usdc,
+    windowSeconds: config.SELLER_SLA_SECONDS + 600, minPriceAtomic: BigInt(Math.round(config.SELLER_MIN_USDC * 1e6)),
   });
+  engineDeps.sales = seller;
 
   if (simMarket) {
     // Seed the owner's market balance so job-board awards work offline.
@@ -177,7 +188,7 @@ export function buildContext(config: Config, o: ContextOverrides = {}) {
 
   return {
     config, db, secrets, rpc, audit, notifier, tokens, auth, bodyguard, agents, execution, ai, nearAi,
-    catalog, x402, chain, spend, treasury, vault, oauth, mcpBoard, receipts, guard, brain, engine, worker, watchtower,
+    catalog, x402, chain, spend, treasury, vault, oauth, mcpBoard, receipts, guard, brain, engine, worker, watchtower, mandate, seller,
     sim: simChain && simMarket ? { chain: simChain, market: simMarket } : null,
     ownerUser,
   };

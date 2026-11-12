@@ -2,10 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../context.js";
 import { SIM_OWNER_ACCOUNT } from "../context.js";
-import { forbidden, notFound } from "../lib/errors.js";
+import { badRequest, forbidden, notFound } from "../lib/errors.js";
 import { verifyMarketWebhook } from "../market/worker.js";
 import type { Scheduler } from "../scheduler.js";
 import { body, params, query, requireUser, SESSION_COOKIE } from "./http.js";
+import { mandateHash, mandateMessage, mandateSchema } from "../contractor/mandate.js";
 import { randomToken, sha256Hex } from "../lib/crypto.js";
 import { now } from "../db.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -89,6 +90,58 @@ export function contractorRoutes(app: FastifyInstance, ctx: AppContext, schedule
     return att;
   });
 
+  // -------------------------------------------------------------- the owner's mandate (NEP-413)
+  app.get("/mandate", async () => ({ ...ctx.mandate.current(), dailySpentAtomic: ctx.mandate.dailySpentAtomic().toString() }));
+  app.post("/mandate/challenge", async (req) => {
+    const user = requireUser(ctx, req);
+    const m = body(mandateSchema, req);
+    const version = ctx.mandate.current().version + 1;
+    return { ...ctx.auth.createChallenge(user.accountId, "veyra_policy", mandateMessage(m, version)), version, hash: mandateHash(m, version) };
+  });
+  app.post("/mandate", async (req) => {
+    const user = requireUser(ctx, req);
+    const b = body(z.object({ mandate: mandateSchema, signed: signedChallenge.optional() }), req);
+    const version = ctx.mandate.current().version + 1;
+    if (!b.signed) {
+      if (!ctx.sim) throw badRequest("signature_required", "the mandate must be signed by the owner's wallet");
+      return ctx.mandate.set(b.mandate, `${user.accountId} (simulator, unsigned)`, null);
+    }
+    const sig = await ctx.auth.verifyOwnerAction(user, "veyra_policy", b.signed, mandateHash(b.mandate, version));
+    return ctx.mandate.set(b.mandate, user.accountId, { publicKey: sig.publicKey, value: sig.signature, nonce: sig.nonce, message: sig.message });
+  });
+
+  // -------------------------------------------------------------- Veyra as an x402 seller (A2A)
+  app.get("/.well-known/x402", async () => ctx.seller.recipients());
+  app.post("/a2a/v1", async (req, reply) => {
+    const rpc = body(z.object({ jsonrpc: z.literal("2.0").optional(), id: z.union([z.number(), z.string()]).default(1), method: z.string(), params: z.record(z.string(), z.unknown()).default({}) }), req);
+    const ok = (result: unknown) => ({ jsonrpc: "2.0", id: rpc.id, result });
+    const fail = (code: number, message: string) => ({ jsonrpc: "2.0", id: rpc.id, error: { code, message } });
+    if (rpc.method === "GetTask") {
+      try { return ok(ctx.seller.task(String((rpc.params as { id?: string }).id ?? ""))); } catch { return fail(-32001, "task not found"); }
+    }
+    if (rpc.method !== "SendMessage") return fail(-32601, "method not found");
+    const msg = rpc.params as { message?: { parts?: { text?: string }[]; metadata?: { title?: string; budgetUsd?: number } }; metadata?: { title?: string; budgetUsd?: number } };
+    const text = String(msg.message?.parts?.[0]?.text ?? "");
+    const meta = msg.message?.metadata ?? msg.metadata ?? {};
+    const budgetUsd = Number(meta.budgetUsd ?? ctx.config.SELLER_MIN_USDC);
+    if (!text.trim()) return fail(-32602, "message.parts[0].text must describe the job");
+    const xPayment = req.headers["x-payment"];
+    const challenge = () => {
+      const row = ctx.seller.price(BigInt(Math.round(budgetUsd * 1e6)));
+      return { x402Version: 2, error: "x-payment header is required", accepts: [row], note: "Sign a NEP-366 delegate ft_transfer for exactly this row to Veyra's spend account. It is executed only when the job is delivered." };
+    };
+    if (typeof xPayment !== "string") return reply.status(402).send(challenge());
+    try {
+      const { contractId } = await ctx.seller.accept({ title: String(meta.title ?? text.split(/[.\n]/)[0].slice(0, 100)), brief: text, xPayment });
+      void ctx.engine.advance(contractId).catch(() => undefined);
+      return ok({ task: ctx.seller.task(contractId) });
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      return reply.status(402).send({ ...challenge(), error: `invalid payment: ${m}` });
+    }
+  });
+  app.get("/sales", async (req) => { requireUser(ctx, req); return { sales: ctx.seller.list() }; });
+
   // -------------------------------------------------------------- estimate (no spending)
   app.post("/estimate", async (req) => {
     requireUser(ctx, req);
@@ -112,6 +165,7 @@ export function contractorRoutes(app: FastifyInstance, ctx: AppContext, schedule
   app.get("/watchtower", async () => ctx.watchtower.latest());
   app.get("/watchtower/agents/:handle", async (req) => ctx.watchtower.lookup(params(req).handle));
   app.get("/watchtower/evidence/:hash", async (req) => ctx.watchtower.evidence(params(req).hash));
+  app.get("/watchtower/agents/:handle/proof", async (req) => ctx.watchtower.proof(params(req).handle, query(z.object({ scan: z.string().optional() }), req).scan));
   app.post("/watchtower/scan", async (req) => {
     requireUser(ctx, req);
     const b = body(z.object({ limit: z.number().int().min(1).max(5000).optional() }), req);
@@ -141,6 +195,12 @@ export function contractorRoutes(app: FastifyInstance, ctx: AppContext, schedule
     return { policy, summary: describePolicy(policy), spendAccountId: ctx.spend.accountId };
   });
 
+  app.post("/treasury/payout", async (req) => {
+    const user = requireUser(ctx, req);
+    const owner = ctx.ownerUser();
+    if (!owner || owner.id !== user.id) throw forbidden("only the owner receives payouts");
+    return ctx.treasury.payout(owner.accountId, ctx.receipts, 1n, "owner");
+  });
   app.post("/treasury/spend/pool", async (req) => {
     requireUser(ctx, req);
     return ctx.spend.ensurePool();

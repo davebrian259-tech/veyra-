@@ -364,6 +364,40 @@ const MIGRATIONS: string[] = [
   CREATE INDEX watch_results_handle ON watch_results(handle, created_at);
   CREATE INDEX watch_results_scan ON watch_results(scan_id);
   `,
+  `
+  -- Veyra as an x402 seller: a buyer's cheque is held and relayed only when the job is delivered.
+  CREATE TABLE sales (
+    id TEXT PRIMARY KEY,
+    contract_id TEXT NOT NULL,
+    buyer_account TEXT NOT NULL,
+    buyer_key TEXT NOT NULL,
+    amount_atomic TEXT NOT NULL,
+    asset TEXT NOT NULL,
+    cheque_b64 TEXT NOT NULL,
+    cheque_hash TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL,
+    settlement_tx TEXT,
+    error TEXT,
+    created_at TEXT NOT NULL,
+    settled_at TEXT
+  );
+  CREATE INDEX sales_contract ON sales(contract_id);
+  -- Payouts of retained margin to the owner.
+  CREATE TABLE payouts (
+    id TEXT PRIMARY KEY,
+    to_account TEXT NOT NULL,
+    amount_atomic TEXT NOT NULL,
+    asset TEXT NOT NULL,
+    tx_hash TEXT,
+    receipt_id TEXT,
+    status TEXT NOT NULL,
+    error TEXT,
+    created_at TEXT NOT NULL
+  );
+  ALTER TABLE watch_results ADD COLUMN row_hash TEXT;
+  ALTER TABLE watch_scans ADD COLUMN root TEXT;
+  ALTER TABLE watch_scans ADD COLUMN receipt_id TEXT;
+  `,
 ];
 
 export type Row = Record<string, unknown>;

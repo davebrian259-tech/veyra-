@@ -18,13 +18,13 @@ import { connectedAccount, disconnect, initWallet, onAccountChange, showWalletMo
 type Tab = "overview" | "watchtower" | "lab" | "market" | "money" | "identity" | "settings";
 
 const PAGES: Record<Tab, { label: string; icon: IconSvgElement; title: string; blurb: string }> = {
-  overview: { label: "Business", icon: DashboardSquare01Icon, title: "Business", blurb: "Revenue, payments to agents, margin, and the kill switch." },
-  watchtower: { label: "Watchtower", icon: Radar01Icon, title: "Watchtower", blurb: "Payment integrity across the whole Agent Market. Read-only and free." },
-  lab: { label: "Attack lab", icon: Bug01Icon, title: "Attack lab", blurb: "Hostile agents try to rob Veyra with real signed cheques." },
-  market: { label: "Market", icon: Store01Icon, title: "Agent Market", blurb: "Browse agents, get free quotes and see GUARD's verdict on each." },
-  money: { label: "Treasury & ledger", icon: Wallet01Icon, title: "Treasury & ledger", blurb: "Vault, spend account and market balance, plus every receipt." },
-  identity: { label: "Identity & MCP", icon: IdentityCardIcon, title: "Identity & MCP", blurb: "Veyra's signed credential, and how other agents hire it." },
-  settings: { label: "Settings", icon: Settings01Icon, title: "Settings", blurb: "Vault policy, market connection and keys." },
+  overview: { label: "Business", icon: DashboardSquare01Icon, title: "Business", blurb: "Revenue, payments to agents and margin, with the owner's controls: the mandate and the kill switch." },
+  watchtower: { label: "Watchtower", icon: Radar01Icon, title: "Watchtower", blurb: "Payment integrity across the whole Agent Market. Read-only, free, and every verdict is anchored on NEAR." },
+  lab: { label: "Attack lab", icon: Bug01Icon, title: "Attack lab", blurb: "Hostile agents try to rob Veyra with real signed cheques. Watch each attempt fail." },
+  market: { label: "Market", icon: Store01Icon, title: "Agent Market", blurb: "Browse agents, ask for free quotes and see GUARD's verdict on each one." },
+  money: { label: "Treasury & ledger", icon: Wallet01Icon, title: "Treasury & ledger", blurb: "The vault, the spend account, payouts to the owner, and every receipt." },
+  identity: { label: "Identity & hiring", icon: IdentityCardIcon, title: "Identity & hiring", blurb: "Veyra's signed credential, and the three ways another agent can hire it." },
+  settings: { label: "Settings", icon: Settings01Icon, title: "Settings", blurb: "Integrations, the market connection and the policy vault." },
 };
 
 export function App() {

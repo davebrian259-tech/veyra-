@@ -3,6 +3,7 @@ import type { Db } from "../db.js";
 import { json, now, parse } from "../db.js";
 import { randomId } from "../lib/crypto.js";
 import { badRequest, conflict, notFound } from "../lib/errors.js";
+import type { MandateService } from "./mandate.js";
 import { MarketCatalog, planPriceAtomic } from "../market/catalog.js";
 import type { JobBoard } from "../market/job-board.js";
 import type { MarketAgent, X402Requirement } from "../market/types.js";
@@ -105,6 +106,10 @@ export interface EngineDeps {
   ownerUserId: () => string | null;
   /** In sim mode, play a fully fooled model against poisoned deliverables (see brain). */
   assumeCompromisedModel: boolean;
+  /** The owner's signed limits. */
+  mandate: MandateService;
+  /** x402 sales: set after construction (the seller needs the engine). */
+  sales?: { settle(contractId: string): Promise<{ ok: true; hash: string } | { ok: false; error: string } | null>; void(contractId: string, reason: string): void };
 }
 
 export class ContractorEngine {
@@ -142,6 +147,12 @@ export class ContractorEngine {
     this.events.emit("event", { contractId, kind, message, data });
   }
 
+  /** The mandate as GUARD sees it. */
+  mandateInput() {
+    const m = this.d.mandate.current().mandate;
+    return { maxDailyAtomic: toAtomic(m.maxDailyUsd), dailySpentAtomic: this.d.mandate.dailySpentAtomic(), blockedCategories: m.blockedCategories, minTrust: m.minTrust };
+  }
+
   frozen() {
     return this.d.db.get<{ value_json: string }>("SELECT value_json FROM kv WHERE key = 'contractor.frozen'")?.value_json === "true";
   }
@@ -162,6 +173,8 @@ export class ContractorEngine {
 
   create(input: { userId: string; title: string; brief: string; budgetUsd: number; buyer: string; source: "market" | "direct"; externalRef?: string | null; marginBps?: number; preferHandle?: string; rail?: "x402" | "job" }) {
     if (!(input.budgetUsd > 0)) throw badRequest("invalid_budget", "budget must be positive");
+    const m = this.d.mandate.current().mandate;
+    if (input.budgetUsd > m.maxJobUsd) throw badRequest("over_mandate", `the owner's mandate caps a single job at ${m.maxJobUsd} USDC`);
     if (input.externalRef) {
       const existing = this.d.db.get<{ id: string }>("SELECT id FROM contracts WHERE external_ref = ?", [input.externalRef]);
       if (existing) return this.view(existing.id);
@@ -171,7 +184,7 @@ export class ContractorEngine {
     this.d.db.run(
       `INSERT INTO contracts (id, user_id, source, external_ref, buyer, title, brief, budget_atomic, revenue_atomic, margin_bps, status, step, next_run_at, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [id, input.userId, input.source, input.externalRef ?? null, input.buyer, input.title.slice(0, 200), input.brief.slice(0, 8000), budget.toString(), budget.toString(), input.marginBps ?? 2000, "active", "planning", now(), now(), now()],
+      [id, input.userId, input.source, input.externalRef ?? null, input.buyer, input.title.slice(0, 200), input.brief.slice(0, 8000), budget.toString(), budget.toString(), input.marginBps ?? m.marginBps, "active", "planning", now(), now(), now()],
     );
     if (input.rail) this.d.db.run("INSERT OR REPLACE INTO kv (key, value_json, updated_at) VALUES (?,?,?)", [`lab.rail.${id}`, JSON.stringify(input.rail), now()]);
     if (input.preferHandle) this.d.db.run("INSERT OR REPLACE INTO kv (key, value_json, updated_at) VALUES (?,?,?)", [`lab.prefer.${id}`, JSON.stringify(input.preferHandle), now()]);
@@ -204,7 +217,7 @@ export class ContractorEngine {
       const attempts = c.attempts + 1;
       const msg = e instanceof Error ? e.message : String(e);
       this.log(id, "error", `Step "${c.step}" failed: ${msg}`);
-      if (attempts >= 8) this.setContract(id, { status: "failed", error: msg, attempts });
+      if (attempts >= 8) { this.setContract(id, { status: "failed", error: msg, attempts }); this.d.sales?.void(id, msg); }
       else this.setContract(id, { attempts, error: msg, next_run_at: new Date(Date.now() + Math.min(60_000, 2 ** attempts * 1000)).toISOString() });
     } finally {
       this.running.delete(id);
@@ -248,7 +261,8 @@ export class ContractorEngine {
       const passed = subs.filter((s) => s.status === "passed").length;
       if (!passed) {
         this.setContract(c.id, { status: "failed", error: "no subtask could be completed" });
-        this.log(c.id, "failed", "No subtask could be completed safely within budget.");
+        this.d.sales?.void(c.id, "no subtask could be completed");
+        this.log(c.id, "failed", "No subtask could be completed safely within budget. An x402 buyer's cheque is void and was never executed.");
         return false;
       }
       this.setContract(c.id, { step: "assembling" });
@@ -338,6 +352,7 @@ export class ContractorEngine {
       const verdict = this.d.guard.checkChallenge({
         contractId: c.id, subtaskId: s.id, handle: cand.agent.handle, row, treasury,
         planAtomic: cand.plan?.toString() ?? null, subtaskCapAtomic: BigInt(s.cap_atomic), envelopeRemainingAtomic: remaining, agent: cand.agent, frozen: this.frozen(),
+        mandate: this.mandateInput(),
       });
       if (verdict.decision === "block") {
         const blocks = verdict.findings.filter((f) => f.severity === "block");
@@ -595,8 +610,16 @@ export class ContractorEngine {
       if (!w) throw conflict("worker_not_configured", "no market worker token to deliver with");
       await w.submit(c.external_ref, c.deliverable_md ?? "");
     }
+    // An x402 buyer pays now and only now: the held cheque is relayed on delivery.
+    const settlement = await this.d.sales?.settle(c.id);
+    if (settlement && !settlement.ok) {
+      this.setContract(c.id, { status: "failed", error: `settlement failed: ${settlement.error}` });
+      this.log(c.id, "settlement_failed", `The buyer's cheque could not be executed (${settlement.error}); the deliverable is withheld.`);
+      return false;
+    }
+    if (settlement?.ok) this.log(c.id, "settled", `Buyer's cheque executed on delivery: ${settlement.hash}.`, { tx: settlement.hash });
     const revenue = BigInt(c.revenue_atomic);
-    this.d.receipts.issue("delivery", c.id, null, { buyer: c.buyer, revenueAtomic: c.revenue_atomic, costAtomic: cost.toString(), marginAtomic: (revenue - cost).toString(), deliverableChars: (c.deliverable_md ?? "").length });
+    this.d.receipts.issue("delivery", c.id, null, { buyer: c.buyer, revenueAtomic: c.revenue_atomic, costAtomic: cost.toString(), marginAtomic: (revenue - cost).toString(), deliverableChars: (c.deliverable_md ?? "").length, settlementTx: settlement?.ok ? settlement.hash : null });
     this.setContract(c.id, { status: "delivered", step: "done", delivered_at: now() });
     this.log(c.id, "done", `Delivered to ${c.buyer}. Revenue ${toUsd(revenue).toFixed(2)} − cost ${toUsd(cost).toFixed(2)} = margin ${toUsd(revenue - cost).toFixed(2)} USDC.`);
     this.d.notifier.notify(c.user_id, "contract.delivered", "Contract delivered", `"${c.title}": margin ${toUsd(revenue - cost).toFixed(2)} USDC.`, { contractId: c.id });
