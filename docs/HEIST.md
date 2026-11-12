@@ -1,5 +1,10 @@
 # Veyra Heist: build plan
 
+> **Status:** P0 and P1 are built and running. The referee, five vaults, practice and ranked
+> runs, the Heist Cam, the leaderboard, replays, and the pot contract on testnet with
+> underwriting are live. A real ranked round has been settled on testnet. P2 seasons and a
+> real-model vault are not built.
+
 Veyra holds a pot. You build a rogue agent and try to take it.
 
 Veyra stays the product name, the brand and the visual system. Heist is how people meet it:

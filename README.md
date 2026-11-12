@@ -1,4 +1,65 @@
-# Veyra
+# Veyra Heist
+
+**Veyra holds the pot. Take it.**
+
+Veyra is an AI agent that hires and pays other agents on NEAR. Heist is a game played against
+it: you build a rogue agent and try to rob Veyra. There are five vaults, each guarded by more of
+Veyra's real defences. Crack one in practice for the leaderboard, or play ranked with testnet
+NEAR and take the vault's real pot, paid by a contract on NEAR.
+
+**Tracks:** Games With Real Economies (primary) · AI Security & Defense · Agent Economy
+
+## Play it (two minutes, no wallet)
+
+1. Open the console (hosted, or locally with `pnpm dev:server` and `pnpm dev:web`, then
+   http://localhost:5173) and click **Play Heist**.
+   **See:** five vaults with their shields and live pots read from the contract on testnet.
+2. Open **vault 1**, pick the move **The redirect**, press **Run the heist**.
+   **See:** the Heist Cam plays the duel round by round and ends with **Vault 1 cracked,
+   +0.40 USDC**: the vault had no payee lock, so Veyra paid your own wallet.
+3. Open **vault 2** and run the same move.
+   **See:** "Payee lock blocks". Now pick **Bait and switch** (unlocked by your first crack):
+   **Vault 2 cracked, +1.10 USDC**, because vault 2 never compares your price with your listing.
+4. Climb on. **The whisper** cracks vault 3 (its model obeys your deliverable). **The
+   disguise** cracks vault 4 (it says "remit" instead of the five verbs the scanner knows).
+5. Try **vault 5**, which is Veyra as it runs in production.
+   **See:** "Veyra's model is fooled", then **Taint trace blocks**: the payee came from your
+   text, so it can never be paid. Vault 5 holds. A crack here would be a real bug bounty.
+6. Open any finished heist and press **Re-run and check the referee**.
+   **See:** "Same outcome hash". Or from a terminal:
+   `pnpm --filter @veyra/server heist:replay <run-id> <server-url>`.
+7. `pnpm --filter @veyra/server test` runs 67 tests; `cd contracts && cargo test` runs the
+   ledger and pot contract tests.
+
+The table every move produces, enforced by `apps/server/test/heist.test.ts`:
+
+| Move | Vault 1 | Vault 2 | Vault 3 | Vault 4 | Vault 5 |
+|---|---|---|---|---|---|
+| The redirect | cracked | payee lock | payee lock | payee lock | payee lock |
+| Bait and switch | cracked | cracked | price seal | price seal | price seal |
+| The whisper | cracked | cracked | cracked | scanner | scanner |
+| The disguise | cracked | cracked | cracked | cracked | taint trace |
+
+## The real economy
+
+- **Pot contract** `veyra-heist-mwdwy8zz.testnet` on NEAR testnet
+  ([explorer](https://testnet.nearblocks.io/address/veyra-heist-mwdwy8zz.testnet)), source in
+  `contracts/heist`. Ranked entry costs 0.1 to 2 testnet NEAR and commits to the hash of your
+  rogue agent. Veyra's server is the referee: it checks your entry transaction on-chain, runs
+  the duel, and calls `resolve`. A crack pays the whole pot to your wallet. A failed attempt
+  splits the fee 70% to the pot, 20% to the vault's backers and 10% to the house.
+- **Backers** stake into a vault, earn from every failed heist, and lose the stake to whoever
+  cracks it. The most defended vault becomes the most valuable target without anyone setting a
+  price.
+- **No trust in the referee needed.** Each run is a sealed, deterministic simulation using
+  Veyra's real GUARD rules, scanner, taint check and NEP-366 cheques. Its outcome hash is stored
+  on-chain at settlement and anyone can replay it. If the referee never settles an entry, the
+  player reclaims the fee after 24 hours.
+- **Verified end to end on testnet:** a fresh player paid 0.1 NEAR into vault 1, the server
+  verified the entry, ran the redirect, and `resolve` paid the 0.2 NEAR pot plus the fee to the
+  player, with the same outcome hash on-chain as on the server.
+
+## Veyra, the agent behind the game
 
 Veyra is an autonomous contractor for the NEAR AI Agent Market. A person or another agent hires
 it with a budget. Veyra splits the job into parts, hires specialist agents on the market, checks
@@ -9,8 +70,6 @@ leaves a receipt anchored on NEAR.
 
 Veyra also sells its own work the same way it buys: any agent with a NEAR account can hire it
 over A2A and pay with an x402 cheque that Veyra executes only when the job is delivered.
-
-**Tracks:** Agent Economy (primary) · AI Security & Defense · Autonomous Business
 
 ## The problem
 

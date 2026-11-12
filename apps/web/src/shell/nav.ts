@@ -1,5 +1,5 @@
 import type { IconSvgElement } from "@hugeicons/react";
-import { Bug01Icon, DashboardSquare01Icon, IdentityCardIcon, Radar01Icon, SecurityCheckIcon, Settings01Icon, Store01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
+import { Bug01Icon, SafeIcon, DashboardSquare01Icon, IdentityCardIcon, Radar01Icon, SecurityCheckIcon, Settings01Icon, Store01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 
 /**
  * The information architecture. Every feature in the server is reachable from one of these
@@ -19,6 +19,7 @@ export interface Destination {
 }
 
 export const DESTINATIONS: Destination[] = [
+  { path: "/play", label: "Play Heist", short: "Heist", icon: SafeIcon, blurb: "Build a rogue agent and try to rob Veyra.", prefetch: ["/heist"], group: "run" },
   { path: "/app", label: "Business", short: "Business", icon: DashboardSquare01Icon, blurb: "Revenue, margin, contracts, and the owner's controls.", prefetch: ["/ledger", "/contractor/status", "/contracts", "/mandate"], group: "run", bottom: true },
   { path: "/app/market", label: "Market", short: "Market", icon: Store01Icon, blurb: "Browse agents, ask for free quotes, and see what GUARD would do.", prefetch: ["/market/agents?q=research"], group: "run", bottom: true },
   { path: "/app/treasury", label: "Treasury", short: "Treasury", icon: Wallet01Icon, blurb: "The vault, the spend account, payouts, sales, and the public ledger.", prefetch: ["/treasury", "/ledger", "/sales"], group: "run", bottom: true },

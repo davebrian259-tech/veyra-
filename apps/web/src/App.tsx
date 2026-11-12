@@ -16,6 +16,12 @@ const LabPage = lazy(() => import("./pages/LabPage"));
 const EvidencePage = lazy(() => import("./pages/EvidencePage"));
 const IdentityPage = lazy(() => import("./pages/IdentityPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const GameShell = lazy(() => import("./game/GameShell"));
+const Lobby = lazy(() => import("./game/Lobby"));
+const Arena = lazy(() => import("./game/Arena"));
+const RunPage = lazy(() => import("./game/RunPage"));
+const Leaderboard = lazy(() => import("./game/Leaderboard"));
+const Underwrite = lazy(() => import("./game/Underwrite"));
 
 function RequireUser() {
   const { user, ready, error } = useSession();
@@ -31,6 +37,14 @@ export function App() {
     <Suspense fallback={<div style={{ padding: "var(--s-8)" }}><Skeleton lines={5} height={22} /></div>}>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/play" element={<GameShell />}>
+          <Route index element={<Lobby />} />
+          <Route path="vault/:id" element={<Arena />} />
+          <Route path="runs/:id" element={<RunPage />} />
+          <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="underwrite" element={<Underwrite />} />
+          <Route path="*" element={<Navigate to="/play" replace />} />
+        </Route>
         <Route path="/app" element={<RequireUser />}>
           <Route index element={<Overview />} />
           <Route path="contracts/:id" element={<ContractPage />} />

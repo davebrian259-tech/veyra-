@@ -21,6 +21,19 @@ services:
         generateValue: true
       - key: VEYRA_SESSION_SECRET
         generateValue: true
+      # Veyra Heist on testnet: the pot contract and the ledger. The referee key is a secret.
+      - key: HEIST_CONTRACT_ID
+        value: veyra-heist-mwdwy8zz.testnet
+      - key: HEIST_NETWORK
+        value: testnet
+      - key: LEDGER_CONTRACT_ID
+        value: veyra-mwcxvovz.testnet
+      - key: LEDGER_NETWORK
+        value: testnet
+      - key: LEDGER_WRITER_ID
+        value: veyra-mwcxvovz.testnet
+      - key: LEDGER_WRITER_KEY
+        sync: false
       # Fill these in after the Cloudflare Pages site exists (Render dashboard → Environment).
       - key: PUBLIC_WEB_ORIGIN
         sync: false

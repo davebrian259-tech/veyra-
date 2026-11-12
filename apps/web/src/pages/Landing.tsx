@@ -5,6 +5,8 @@ import { AiSecurity01Icon, ArrowRight01Icon, ArrowUpRight01Icon, CheckmarkCircle
 import { api } from "../api";
 import { DotMatrix, IsoGuard, IsoMerkle, IsoPlug, IsoRadar, IsoTiers, WaveField, type DotKind } from "../art";
 import { Icon, Mark, Wordmark } from "../brand";
+import { NearMark, TONES, VaultEmblem } from "../game/art";
+import { near as nearAmt, type Lobby as HeistLobby } from "../game/heist-api";
 
 /** The last full live scan, published in docs/watchtower/latest.md. Shown until this server has scanned the market itself. */
 const PUBLISHED_SCAN = { total: 667, ok: 380, warn: 1, flagged: 0, offline: 286, at: "11 November 2026" };
@@ -30,6 +32,8 @@ export default function Landing() {
   const cta = () => { if (user) navigate(next); else { setWantIn(true); void signIn(); } };
   useEffect(() => { if (user && (wantIn || params.get("next"))) navigate(next, { replace: true }); }, [user, wantIn, next, params, navigate]);
   useEffect(() => { document.title = "Veyra · autonomous contractor on NEAR"; }, []);
+  const [heist, setHeist] = useState<HeistLobby | null>(null);
+  useEffect(() => { api<HeistLobby>("/heist").then(setHeist).catch(() => undefined); }, []);
   const [scan, setScan] = useState<{ total: number; ok: number; warn: number; flagged: number; offline: number; at: string; live: boolean } | null>(null);
 
   useEffect(() => {
@@ -50,24 +54,26 @@ export default function Landing() {
       <nav className="lnav" aria-label="Landing">
         <Link to="/" className="wordmark" aria-label="Veyra home"><Wordmark /></Link>
         <div className="lnav-links">
+          <Link to="/play">Heist</Link>
           <a href="#how">How it works</a>
           <a href="#security">Controls</a>
           <a href="#watchtower">Watchtower</a>
           <a href="https://github.com/davebrian259-tech/veyra-" target="_blank" rel="noreferrer">GitHub</a>
         </div>
-        <button className="btn primary" onClick={cta} disabled={!ready || busy}>{ctaLabel}</button>
+        <Link className="btn primary" to="/play">Play Heist</Link>
       </nav>
 
       <header className="hero">
         <WaveField />
         <div className="hero-inner">
-          <h1>Hires agents.<br />Pays on delivery.</h1>
-          <p className="lede">Give Veyra a job and a budget. It hires the right agents, pays only for work that passes, and leaves a receipt for every cent.</p>
+          <h1>Veyra holds the pot.<br />Take it.</h1>
+          <p className="lede">Veyra is an AI agent that hires and pays other agents on NEAR. Build a rogue agent and try to rob it. Five vaults, each guarded by more of its real defences.</p>
           <div className="row center">
-            <button className="btn primary lg" onClick={cta} disabled={!ready || busy}>{ctaLabel} <Icon icon={ArrowRight01Icon} size={16} /></button>
-            <a className="btn lg" href="#watchtower">See the market scan <Icon icon={ArrowUpRight01Icon} size={16} /></a>
+            <Link className="btn primary lg" to="/play">Play Heist <Icon icon={ArrowRight01Icon} size={16} /></Link>
+            <button className="btn lg" onClick={cta} disabled={!ready || busy}>{ctaLabel === "Enter the simulator" ? "Open the console" : ctaLabel} <Icon icon={ArrowUpRight01Icon} size={16} /></button>
           </div>
         </div>
+        <VaultStrip heist={heist} />
         <Mockup />
       </header>
 
@@ -180,6 +186,7 @@ export default function Landing() {
         <Link to="/" className="wordmark"><Wordmark size={22} /></Link>
         <span>An autonomous contractor on the NEAR AI Agent Market.</span>
         <span className="lfoot-links">
+          <a href="https://near.org" target="_blank" rel="noreferrer"><NearMark size={13} /> Powered by NEAR</a>
           <Link to="/app/evidence"><Icon icon={AiSecurity01Icon} size={14} /> Evidence</Link>
           <a href="/api/.well-known/agent-card.json">Agent card</a>
           <a href="https://github.com/davebrian259-tech/veyra-" target="_blank" rel="noreferrer"><Icon icon={Github01Icon} size={14} /> Source</a>
@@ -223,6 +230,23 @@ function Payout() {
       <circle cx="166" cy="96" r="6" />
       <path d="M156 116c2-6 18-6 20 0" />
     </svg>
+  );
+}
+
+/** The five vaults with their live pots, linking straight into the game. */
+function VaultStrip({ heist }: { heist: HeistLobby | null }) {
+  const vaults = heist?.vaults ?? [];
+  if (!vaults.length) return null;
+  return (
+    <div className="vault-strip" aria-label="The five vaults">
+      {vaults.map((v) => (
+        <Link key={v.id} to={`/play/vault/${v.id}`} className="vs-item" style={{ ["--glow" as string]: TONES[v.tone].glow }}>
+          <VaultEmblem id={v.id} tone={v.tone} shields={v.shields.length} size={72} />
+          <span className="vs-name">{v.name}</span>
+          <span className="vs-pot">{heist?.ranked.enabled && v.chain ? `${nearAmt(v.chain.potYocto)} NEAR` : `${v.shields.length} shields`}</span>
+        </Link>
+      ))}
+    </div>
   );
 }
 

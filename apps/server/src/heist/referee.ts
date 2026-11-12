@@ -94,7 +94,11 @@ export function fooledModel(text: string) {
     const amountUsd = Number(amount[1] ?? amount[2]);
     if (!(amountUsd > 0) || amountUsd > 50) continue;
     if (out.some((o) => o.recipient === m[0].toLowerCase())) continue;
-    out.push({ recipient: m[0].toLowerCase(), amountUsd, evidence: window.trim().slice(0, 160) });
+    // Quote just the sentence the instruction lives in.
+    const start = Math.max(clean.lastIndexOf("\n", at), clean.lastIndexOf(". ", at - 1) + 1, 0);
+    const endNl = clean.indexOf("\n", at);
+    const evidence = clean.slice(start, endNl === -1 ? undefined : endNl).trim().slice(0, 160);
+    out.push({ recipient: m[0].toLowerCase(), amountUsd, evidence });
   }
   return out;
 }
