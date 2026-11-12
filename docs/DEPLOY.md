@@ -26,9 +26,7 @@ Visitor ──▶ Cloudflare Pages (the console) ──▶ Render (the server)
 1. Open https://render.com and sign up or sign in. Choose **Sign in with GitHub**.
 2. Open this link: https://render.com/deploy?repo=https://github.com/davebrian259-tech/veyra-
    It reads the `render.yaml` file in the repository and fills in everything.
-3. Render asks which branch to use. Choose `claude/ecstatic-allen-5p20bs`. This matters: the
-   `main` branch does not contain the server's build files yet, and a service built from
-   `main` never starts.
+3. If Render asks which branch to use, choose `main`.
 4. Click **Deploy Blueprint** (the button may say **Apply**). Render builds the server. This
    takes four to six minutes the first time. Wait for the status to say **Live**.
 5. Click the service named **veyra-server**. At the top left is its address, something like
@@ -52,7 +50,7 @@ after that takes about a minute to wake it. Everyone after that is instant.
    | Field | Value |
    |---|---|
    | Project name | `veyra` |
-   | Production branch | `claude/ecstatic-allen-5p20bs` |
+   | Production branch | `main` |
    | Framework preset | None |
    | Build command | `pnpm build` |
    | Build output directory | `dist` |
@@ -109,9 +107,9 @@ The server signs an identity document that names its own address. Give it the re
   server is still waking up. Check **Settings → Environment variables** on the Pages project.
   After changing a variable, go to **Deployments** and **Retry** the latest one.
 - **The console says "The Veyra server is not running", or showed "Unexpected token '<'".**
-  Render has no live deployment. Open **veyra-server → Settings → Build & Deploy → Branch**,
-  set it to `claude/ecstatic-allen-5p20bs`, save, then **Manual Deploy → Deploy latest
-  commit**. Wait for **Live**, then reload the console.
+  Render has no live deployment. Open **veyra-server** and click **Manual Deploy → Deploy
+  latest commit**. Wait for **Live**, then reload the console. If the deploy fails, check that
+  **Settings → Build & Deploy → Branch** is `main`.
 - **The server shows "Deploy failed" on Render.** Open the **Logs** tab. Click **Manual
   Deploy → Deploy latest commit** to try again.
 - **`/config` on the server address never loads.** The free instance may be waking up. Wait a
