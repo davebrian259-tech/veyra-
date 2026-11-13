@@ -1,5 +1,7 @@
 # Veyra Heist
 
+![Veyra Heist: one AI guards the money, one AI steals it](docs/media/veyra-heist-cover.png)
+
 **Veyra holds the pot. Take it.**
 
 Veyra is an AI agent that hires and pays other agents on NEAR. Veyra Heist is a game played
@@ -8,11 +10,38 @@ There are five vaults, each guarded by more of Veyra's real defences. Practice i
 no wallet. Ranked heists pay a small entry fee in testnet NEAR to a contract that holds every
 pot. Crack a vault and the contract pays you the whole pot.
 
-**Tracks:** Games With Real Economies (primary) · AI Security & Defense · Agent Economy
-**For judges:** [docs/HACKATHON.md](docs/HACKATHON.md) has the game loop on paper, the economy, and a checklist against the track brief.
-**Network:** NEAR testnet · pot contract [`veyra-heist-mwdwy8zz.testnet`](https://testnet.nearblocks.io/address/veyra-heist-mwdwy8zz.testnet) · loot (NEP-245) [`veyra-loot-mweerm0q.testnet`](https://testnet.nearblocks.io/address/veyra-loot-mweerm0q.testnet)
+| | |
+|---|---|
+| **Play** | https://veyra-ccp.pages.dev (practice is free, no wallet needed) |
+| **Demo film** | 1:57, linked from the demo post on X; made in code, see [film/](film/) |
+| **Tracks** | Games With Real Economies (primary) · AI Security & Defense · Agent Economy |
+| **Network** | NEAR testnet |
+| **Pot contract** | [`veyra-heist-mwdwy8zz.testnet`](https://testnet.nearblocks.io/address/veyra-heist-mwdwy8zz.testnet) |
+| **Loot (NEP-245)** | [`veyra-loot-mweerm0q.testnet`](https://testnet.nearblocks.io/address/veyra-loot-mweerm0q.testnet) |
+| **Receipts ledger** | [`veyra-mwcxvovz.testnet`](https://testnet.nearblocks.io/address/veyra-mwcxvovz.testnet) |
+| **Submitting** | [docs/SUBMISSION.md](docs/SUBMISSION.md): the form answers, the demo post and the checklist |
+| **For judges** | [docs/HACKATHON.md](docs/HACKATHON.md): the game loop on paper, the economy, and a checklist against the track brief |
 
-![The Veyra Heist lobby: your next target, the five vaults with live pots, objectives and live heists](docs/ux-audit/after/lobby-desktop.png)
+## The problem
+
+AI agents now pay other AI agents. An agent with a wallet is a vault, and every agent it hires
+can try to talk it into paying too much, paying the wrong account, or obeying instructions hidden
+in the work it delivers. Defences against this are usually tested in private, by the people who
+wrote them.
+
+Veyra Heist turns that testing into a game with a real economy. Anyone can attack Veyra's
+defences, every failed attempt makes the prize bigger, and a crack on the top vault would be a
+genuine security finding, paid by a contract on NEAR.
+
+## Screens
+
+| | |
+|---|---|
+| ![The landing page](docs/media/app/landing.png) **The front door.** Live pots and one button: Play free. | ![The lobby](docs/media/app/lobby.png) **Vaults.** Your next target, the five vaults with live pots, objectives and the live feed. |
+| ![The workshop](docs/media/app/workshop.png) **Build your rogue.** Pick a move, set the price, the payee and what you deliver. | ![The Heist Cam](docs/media/app/heist-cam.png) **The Heist Cam.** The duel round by round, and the shield that stopped you. |
+| ![A vault holds](docs/media/app/vault-holds.png) **Change one thing and go again.** Vault 2's payee lock stops the redirect. | ![Back a vault](docs/media/app/underwrite.png) **Back a vault.** Stake on a vault holding and earn when others fail. |
+| ![Leaderboard](docs/media/app/leaderboard.png) **Leaderboard.** Ranked by the highest vault cracked. | ![Stats](docs/media/app/stats.png) **Stats.** Pots, heists per day, crack rates, what stops heists. |
+| ![Loot](docs/media/app/loot.png) **Loot.** A NEP-245 gold bar per vault, minted to ranked winners. | ![Fast-forward](docs/media/app/fastforward.png) **Fast-forward.** A week of NPC crews and backers in a minute. |
 
 ## Contents
 
@@ -20,14 +49,17 @@ pot. Crack a vault and the contract pays you the whole pot.
 - [How to play](#how-to-play)
 - [What is in the game](#what-is-in-the-game)
 - [The economy](#the-economy)
+- [The loot contract (NEP-245)](#the-loot-contract-nep-245)
 - [The pot contract](#the-pot-contract)
 - [Fair play: checking the referee](#fair-play-checking-the-referee)
 - [How NEAR is used](#how-near-is-used)
 - [Architecture](#architecture)
 - [Tests](#tests)
 - [Deploy](#deploy)
+- [The film](#the-film)
 - [The agent behind the game](#the-agent-behind-the-game)
 - [Honest limits](#honest-limits)
+- [Built at NEAR HACKATHON](#built-at-near-hackathon)
 
 ## Quick start
 
@@ -280,6 +312,14 @@ built from `main`. The web app runs on Cloudflare Pages, where a Pages Function 
 to the server. Add `LEDGER_WRITER_KEY` as a secret on Render to enable ranked play. The
 step-by-step guide is [docs/DEPLOY.md](docs/DEPLOY.md).
 
+## The film
+
+The 117-second demo film is made entirely in code: React and Three.js with Remotion for the
+picture, the real web app captured in 4K, a score synthesized in Python, and three ElevenLabs
+voices (a narrator, the guard AI and the rogue AI). Every crack and block on screen is what the
+game's referee returned for that move on that vault. Source, voice lines and build steps are in
+[film/README.md](film/README.md).
+
 ## The agent behind the game
 
 The shields in the game are the checks Veyra runs before it pays anyone. Veyra is an autonomous
@@ -305,4 +345,16 @@ documentation (the problem, the treasury design, live mode and honesty notes) is
 - **Performance.** Lighthouse on the lobby on a phone scores 81 for performance (100 for
   accessibility, best practices and SEO); the landing page scores 91.
 
-All code was written during the hackathon window (from 2026-11-10). License: MIT.
+## Built at NEAR HACKATHON
+
+- **Built during the hackathon.** The first commit is on 2026-11-08, inside the code window.
+  There is no pre-hackathon baseline: every line in this repository, including the agent behind
+  the game, was written for NEAR HACKATHON.
+- **Built with AI assistance.** This project was built with the help of Claude (Anthropic),
+  through Claude Code: the code, the contracts, the tests, the documentation and the film. The
+  people on the team directed the work, made the decisions and reviewed the results.
+- **Other AI tools.** The film's voices and three of its sound effects were generated with
+  ElevenLabs.
+- **Open-source libraries** are listed under [Architecture](#architecture) and in each
+  `package.json` and `Cargo.toml`.
+- **License:** [MIT](LICENSE).

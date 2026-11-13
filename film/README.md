@@ -17,7 +17,7 @@ against that vault (`src/data/ladder.json`).
 | 0:12 | II. Five vaults | Five lacquered vaults pop up in their colours, named, with their entry fees. |
 | 0:21 | II. The heist | The real web app, zoomed in: the lobby, the vault 1 workshop with the redirect move and "Pay to: your account", then the Heist Cam playing the actual run ("Payee lock is off"). "Payment approved." The 3D door swings open. |
 | 0:37 | III. Escalation | Each vault adds the shield that beat the last move, and each shield is its own 3D layer: a cage of bars drops (payee lock), a hex glass dome grows (price seal), laser sheets sweep (scanner), red traces race across the floor (taint trace). The rogue adapts every time: bait and switch, the whisper, the disguise. Vault 5 holds. |
-| 1:09 | IV. The economy | Ranked entries in testnet NEAR (0.1 to 2), the contract's 70 / 20 / 10 split, the pot paid by `veyra-heist-mwdwy8zz.testnet` on a crack, backers' 20% share. |
+| 1:09 | IV. The economy | Ranked entries in testnet NEAR (0.1 to 2), the contract's 70 / 20 / 10 split, the pot paid by `veyra-heist-mwdwy8zz.testnet` on a crack, backers' 20% of every failed entry. |
 | 1:28 | The whole game | A pass through every page of the real app in a browser: front door, vaults, workshop, replays, leaderboard, back a vault, live stats, NEP-245 loot. |
 | 1:35 | V. The reveal | All five vaults with every shield up; *Build the agent. Challenge the intelligence. Take the vault.* VEYRA. |
 

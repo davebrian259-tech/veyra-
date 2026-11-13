@@ -139,7 +139,7 @@ export function Economy() {
 
       <Big lines={["FAIL, AND YOUR FEE", "GROWS THE [POT.]"]} at={116} out={194} size={128} accent={W.tone[3]} style={{ left: 120, top: 140 }} />
       <Big lines={["CRACK IT.", "THE CONTRACT [PAYS] YOU."]} at={200} out={274} size={128} accent={W.tone[3]} style={{ left: 120, top: 140 }} />
-      <Big lines={["BACK A VAULT.", "EARN FROM [EVERY] ATTEMPT."]} at={280} size={128} accent={W.ink} style={{ left: 120, top: 140 }} />
+      <Big lines={["BACK A VAULT.", "EARN WHEN [OTHERS] FAIL."]} at={280} size={128} accent={W.ink} style={{ left: 120, top: 140 }} />
       {f >= 120 && (
         <div style={{ position: "absolute", left: 120, top: 560, width: barW, height: 200, display: "flex", gap: 24 * split }}>
           {parts.map((pt, j) => {
@@ -165,7 +165,7 @@ export function Economy() {
         </div>
       )}
       <Tag at={214} out={274} size={48} color={W.ink} style={{ left: 120, bottom: 70, fontFamily: MONO, textTransform: "none" }}>veyra-heist-mwdwy8zz.testnet</Tag>
-      <Tag at={300} size={48} color={W.ink} style={{ left: 120, top: 860 }}>Backers share 20% of every entry fee</Tag>
+      <Tag at={300} size={48} color={W.ink} style={{ left: 120, top: 860 }}>Backers share 20% of every failed entry</Tag>
       <Tag at={360} size={48} style={{ left: 120, bottom: 70 }}>Testnet NEAR · Paid out by the contract</Tag>
       <Flash at={0} len={8} />
     </AbsoluteFill>
