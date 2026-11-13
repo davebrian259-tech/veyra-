@@ -30,6 +30,8 @@ test("onboarding, first heist and result", async ({ page }) => {
 
 /** A cancelled signature is explained in plain words, and nothing is charged. */
 test("ranked entry cancelled in the wallet shows a readable error", async ({ page }) => {
+  const ranked = (await (await page.request.get("/api/heist")).json()).ranked.enabled;
+  test.skip(!ranked, "Ranked play is off on this server (no referee key).");
   await installWallet(page, { accountId: "someone.testnet", reject: true });
   await page.addInitScript(() => { localStorage.setItem("veyra.heist.tour.lobby", "1"); localStorage.setItem("veyra.heist.tour.arena", "1"); });
   await page.goto("/play/vault/1?confirm=ranked");
@@ -47,6 +49,7 @@ test("ranked entry cancelled in the wallet shows a readable error", async ({ pag
 test("connect wallet, ranked entry on testnet, settled result", async ({ page }, info) => {
   test.skip(!hasTestnetKey, "Set E2E_NEAR_ACCOUNT and E2E_NEAR_KEY (a funded testnet account) to run the on-chain test.");
   test.skip(info.project.name !== "desktop", "One real transaction per run is enough.");
+  test.skip(!(await (await page.request.get("/api/heist")).json()).ranked.enabled, "Ranked play is off on this server.");
   await installWallet(page);
   await page.addInitScript(() => { localStorage.setItem("veyra.heist.tour.lobby", "1"); localStorage.setItem("veyra.heist.tour.arena", "1"); });
   await page.goto("/play");

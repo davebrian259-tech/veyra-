@@ -16,6 +16,9 @@ export const onRequest = async (context: { request: Request; env: Env; params: {
   headers.set("x-forwarded-host", incoming.host);
   headers.set("x-forwarded-proto", incoming.protocol.replace(":", ""));
   headers.delete("host");
+  // the visitor's own address, so per-player limits are not shared by everyone behind this proxy
+  const client = request.headers.get("cf-connecting-ip");
+  if (client) { headers.set("x-veyra-client-ip", client); headers.set("x-forwarded-for", client); }
   const res = await fetch(target, { method: request.method, headers, body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body, redirect: "manual" });
   const out = new Headers(res.headers);
   out.delete("content-encoding");
