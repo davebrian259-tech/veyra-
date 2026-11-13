@@ -8,9 +8,9 @@ import {
   Logout01Icon, SafeIcon, Search01Icon, VolumeHighIcon, VolumeOffIcon, Wallet02Icon,
 } from "@hugeicons/core-free-icons";
 import { Icon, Mark } from "../brand";
+import { Footer } from "../shell/Footer";
 import { ThemeToggle } from "../theme";
 import { Button, Skeleton } from "../ui";
-import { PoweredByNear } from "./art";
 import { FAUCET_URL } from "./errors";
 import { Explain, Kbd, Tip } from "./explain";
 import { play } from "./fx";
@@ -89,6 +89,7 @@ function Shell() {
           <Suspense fallback={<Skeleton lines={6} height={28} />}>
             <Outlet />
           </Suspense>
+          <Footer compact />
         </main>
       </div>
       <nav className="arena-bottom" aria-label="Heist">
@@ -132,7 +133,7 @@ function TopBar({ onPalette }: { onPalette: () => void }) {
         <Tip label="Jump to anything" keys={["Ctrl", "K"]}>
           <button type="button" className="btn sm palette-btn" onClick={onPalette} data-tour="palette" aria-label="Open the command palette"><Icon icon={Search01Icon} size={16} /><span className="hide-sm">Search</span><Kbd>⌘K</Kbd></button>
         </Tip>
-        <PoweredByNear network={network} />
+        <span className="net-chip" title={`Running on NEAR ${network}`}>{network === "testnet" ? "Testnet" : "Mainnet"}</span>
         <WalletButton />
       </div>
     </header>

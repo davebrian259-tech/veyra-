@@ -1,0 +1,27 @@
+/* The site footer. It lives inside the arena theme (landing and game), so it follows light and dark. */
+.site-foot { --sf-fg: var(--fg); --sf-dim: var(--fg-3); --sf-line: var(--line); max-width: 1240px; margin: clamp(72px, 9vw, 120px) auto 0; padding: var(--s-10) var(--gutter) calc(var(--s-6) + env(safe-area-inset-bottom)); border-top: 1px solid var(--sf-line); color: var(--sf-dim); font-size: var(--fs-sm); }
+.site-foot.compact { margin-top: var(--s-12); padding-left: 0; padding-right: 0; max-width: none; }
+.sf-top { display: grid; grid-template-columns: minmax(220px, 1.1fr) 3fr; gap: var(--s-10); }
+.sf-mark { display: inline-flex; align-items: center; gap: 10px; color: var(--sf-fg); text-decoration: none; font-weight: 650; font-size: var(--fs-lg); letter-spacing: -0.02em; }
+.sf-brand p { margin: var(--s-3) 0 var(--s-4); max-width: 34ch; line-height: 1.55; }
+.sf-social { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--sf-fg); text-decoration: none; font-weight: 500; transition: border-color var(--t-fast), background var(--t-fast); }
+.sf-social:hover { background: var(--bg-2); border-color: var(--fg-4); }
+.sf-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-6); }
+.sf-cols h2 { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--sf-fg); margin: 0 0 var(--s-3); }
+.sf-cols ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.sf-cols a { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; color: var(--sf-dim); text-decoration: none; transition: color var(--t-fast); }
+.sf-cols a:hover { color: var(--sf-fg); }
+.site-foot a:focus-visible { outline: none; box-shadow: var(--focus); border-radius: 6px; }
+.sf-legal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3) var(--s-6); margin-top: var(--s-10); padding-top: var(--s-5); border-top: 1px solid var(--sf-line); font-size: var(--fs-xs); line-height: 1.6; }
+.sf-legal p { margin: 0; }
+.sf-legal a { color: var(--sf-fg); text-underline-offset: 3px; }
+.sf-near { display: flex; justify-content: center; margin-top: var(--s-8); }
+.sf-near a { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-4); text-decoration: none; transition: color var(--t-fast); }
+.sf-near a:hover { color: var(--sf-dim); }
+@media (max-width: 960px) {
+  .sf-top { grid-template-columns: 1fr; gap: var(--s-8); }
+  .sf-legal { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .sf-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--s-6); }
+}

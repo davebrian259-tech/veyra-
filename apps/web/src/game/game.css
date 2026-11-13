@@ -559,3 +559,6 @@ button.explain.shield-explain:hover .shield-token { border-color: var(--line-2);
   .loot-send { grid-template-columns: 1fr; }
   .arena-bottom { grid-template-columns: repeat(6, 1fr); }
 }
+
+.net-chip { display: inline-flex; align-items: center; min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-2); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--fg-3); }
+@media (max-width: 760px) { .net-chip { display: none; } }

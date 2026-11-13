@@ -49,11 +49,6 @@
 .lp-final-art { display: flex; gap: var(--s-3); }
 .lp-final h2 { font-size: clamp(2rem, 4.4vw, 3.2rem); letter-spacing: -0.05em; line-height: 1.05; }
 .lp-final p { color: var(--fg-2); }
-.lp-foot { max-width: 1240px; margin: clamp(80px, 10vw, 120px) auto 0; padding: var(--s-6) var(--gutter) var(--s-10); border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-4); }
-.lp-foot .wordmark { color: var(--fg); text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
-.lp-foot-links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4); font-size: var(--fs-sm); }
-.lp-foot-links > a:not(.near-badge) { color: var(--fg-3); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
-.lp-foot-links > a:hover { color: var(--fg); }
 
 @media (max-width: 1100px) {
   .lp-shields { grid-template-columns: repeat(4, 32px); }

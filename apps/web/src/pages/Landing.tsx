@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { MotionConfig, motion } from "motion/react";
-import { ArrowRight01Icon, ArrowUpRight01Icon, CheckmarkCircle02Icon, Github01Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, ArrowUpRight01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
 import { api } from "../api";
-import { Icon, Mark, Wordmark } from "../brand";
+import { Icon, Wordmark } from "../brand";
 import { useSession } from "../shell/session";
+import { Footer } from "../shell/Footer";
 import { ThemeToggle } from "../theme";
-import { MoneyFlow, NearMark, PoweredByNear, RogueAvatar, ShieldToken, TONES, VaultEmblem } from "../game/art";
+import { MoneyFlow, RogueAvatar, ShieldToken, TONES, VaultEmblem } from "../game/art";
 import { ALL_SHIELDS, nearNum, type Lobby, type Run } from "../game/heist-api";
 import "../game/game.css";
 import "./landing.css";
@@ -136,7 +137,7 @@ export default function Landing() {
 
         <section id="near" className="lp-section">
           <div className="lp-head">
-            <p className="lp-tag"><NearMark size={12} /> Built on NEAR</p>
+            <p className="lp-tag">The technology</p>
             <h2>Every coin moves on NEAR.</h2>
             <p>The game, the pots and the agent behind them run on NEAR's stack, from the contract that holds your winnings to the market where Veyra hires.</p>
           </div>
@@ -250,16 +251,7 @@ export default function Landing() {
           <Link className="btn primary big" to="/play/vault/1?move=redirect">Start your first heist <Icon icon={ArrowRight01Icon} size={18} /></Link>
         </section>
 
-        <footer className="lp-foot">
-          <Link to="/" className="wordmark" aria-label="Veyra home"><Mark size={22} /> <span>Veyra</span></Link>
-          <span className="muted small">A game against a real AI agent. {heist?.stats ? `${heist.stats.runs} heists played, ${heist.stats.cracks} cracks.` : ""}</span>
-          <span className="lp-foot-links">
-            <PoweredByNear network={heist?.ranked.network} />
-            <Link to="/app/evidence">Evidence</Link>
-            <a href="/api/.well-known/agent-card.json">Agent card</a>
-            <a href={REPO} target="_blank" rel="noreferrer"><Icon icon={Github01Icon} size={14} /> Source</a>
-          </span>
-        </footer>
+        <Footer />
       </div>
     </MotionConfig>
   );
