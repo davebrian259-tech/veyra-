@@ -10,10 +10,10 @@ import { useHeist } from "./session";
 /*
  * Chart colours, validated with the dataviz palette checker against the panel surface #14141b
  * (lightness band, CVD separation, normal-vision floor and 3:1 contrast all pass).
- * Gold is money and cracks; blue is everything else. Single-series charts use one colour.
+ * Gold is money and cracks; graphite is everything else. Single-series charts use one colour.
  */
 const GOLD = "#b8891a";
-const BLUE = "#6f86f0";
+const BLUE = "#7a7a85"; // graphite: "held" and everything that is not money
 const axis = { stroke: "var(--fg-3)", fontSize: 12, tickLine: false, axisLine: false } as const;
 
 /** The game's economy and play over time: pots, heists per day, crack rates, what stops players, your loot. */

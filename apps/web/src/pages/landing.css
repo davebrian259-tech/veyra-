@@ -1,7 +1,7 @@
 /* The landing page, in the arena's art direction: dark steel, one lit vault, gold for money. */
 .lp { overflow-x: clip; }
 .lp a { color: inherit; }
-.lp-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-3) var(--gutter); min-height: 68px; background: rgb(11 11 16 / 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgb(255 255 255 / 0.04); }
+.lp-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-3) var(--gutter); min-height: 68px; background: rgb(14 14 16 / 0.88); backdrop-filter: blur(12px); border-bottom: 1px solid rgb(255 255 255 / 0.04); }
 .lp-nav .wordmark { color: var(--fg); text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
 .lp-links { display: flex; gap: var(--s-6); font-size: var(--fs-sm); }
 .lp-links a { color: var(--fg-3); text-decoration: none; min-height: var(--tap); display: inline-flex; align-items: center; }
@@ -15,8 +15,7 @@
 .lp-proof li { display: inline-flex; align-items: center; gap: 6px; }
 .lp-proof svg { color: var(--good); }
 .lp-hero-art { position: relative; display: grid; justify-items: center; gap: var(--s-4); }
-.lp-hero-art::before { content: ""; position: absolute; inset: -10% -20%; background: radial-gradient(closest-side, var(--glow), transparent 70%); pointer-events: none; }
-.lp-hero-art .emblem { position: relative; width: min(300px, 70vw); height: auto; filter: drop-shadow(0 30px 80px var(--glow)); }
+.lp-hero-art .emblem { position: relative; width: min(300px, 70vw); height: auto; filter: drop-shadow(0 30px 60px rgb(0 0 0 / 0.7)); }
 .lp-hero-pot { position: relative; display: grid; justify-items: center; text-align: center; }
 .lp-hero-pot b { font-size: clamp(2rem, 4vw, 2.8rem); color: var(--gold); letter-spacing: -0.04em; }
 .lp-hero-pot span { color: var(--fg-3); font-size: var(--fs-sm); }
@@ -45,7 +44,6 @@
 
 .lp-vaults { display: grid; gap: var(--s-2); }
 .lp-vault { position: relative; display: flex; align-items: center; gap: var(--s-5); padding: var(--s-3) var(--s-5) var(--s-3) var(--s-3); border-radius: 24px; background: var(--panel); border: 1px solid var(--line); text-decoration: none; overflow: hidden; transition: border-color var(--t-med); }
-.lp-vault::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 220px; background: radial-gradient(120px 90px at 50px 50%, var(--glow), transparent 75%); pointer-events: none; opacity: 0.7; }
 .lp-vault:hover { border-color: color-mix(in srgb, var(--tone-a) 40%, var(--line)); }
 .lp-vault > * { position: relative; }
 .lp-vault h3 { font-size: var(--fs-lg); letter-spacing: -0.02em; }
