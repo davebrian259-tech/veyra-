@@ -37,6 +37,10 @@ export function heistRoutes(app: FastifyInstance, ctx: AppContext) {
     return H.ranked(b);
   });
   app.get("/heist/series", async () => H.series());
+  app.get("/heist/simulate", async (req) => {
+    const q = query(z.object({ seed: z.coerce.number().int().min(1).max(1_000_000).default(7), days: z.coerce.number().int().min(1).max(14).default(7) }), req);
+    return H.simulate(q.seed, q.days);
+  });
   app.get("/heist/players/:who", async (req) => H.player(z.string().min(1).max(64).parse(params(req).who)));
   app.get("/heist/accounts/:account", async (req) => H.account(z.string().regex(/^[a-z0-9._-]{2,64}$/).parse(params(req).account)));
   app.get("/heist/tx/:hash", async (req) => H.tx(z.string().min(20).max(80).parse(params(req).hash), z.string().regex(/^[a-z0-9._-]{2,64}$/).parse(query(z.object({ sender: z.string() }), req).sender)));

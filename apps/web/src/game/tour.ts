@@ -31,12 +31,13 @@ export async function startTour(id: TourId) {
   const visible = (sel: string) => { const n = document.querySelector<HTMLElement>(`[data-tour="${sel}"]`); return n && n.offsetParent !== null ? n : null; };
   const steps = STEPS[id].filter((s) => visible(s.el)).map((s) => ({ element: `[data-tour="${s.el}"]`, popover: { title: s.title, description: s.text } }));
   if (!steps.length) return;
+  // shown once counts as seen, however it ends (finished, skipped, closed, or navigated away)
+  try { localStorage.setItem(SEEN(id), "1"); } catch { /* storage blocked */ }
   const d = driver({
     showProgress: true, allowClose: true, overlayOpacity: 0.65, stagePadding: 6, stageRadius: 18, popoverClass: "veyra-tour",
     nextBtnText: "Next", prevBtnText: "Back", doneBtnText: "Let's play", progressText: "{{current}} of {{total}}",
     animate: !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
     steps,
-    onDestroyed: () => { try { localStorage.setItem(SEEN(id), "1"); } catch { /* storage blocked */ } },
   });
   d.drive();
 }

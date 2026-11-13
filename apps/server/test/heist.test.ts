@@ -105,3 +105,24 @@ describe("Heist read endpoints for the game UI", () => {
     await app.close();
   });
 });
+
+describe("Heist economy fast-forward", () => {
+  it("is deterministic, follows the contract's split, and never creates or loses money", async () => {
+    const { simulateWeek, RULES } = await import("../src/heist/economy.js");
+    const a = await simulateWeek({ seed: 3, days: 7 });
+    const b = await simulateWeek({ seed: 3, days: 7 });
+    expect(a.events.length).toBe(b.events.length);
+    expect(a.frames.at(-1)).toEqual(b.frames.at(-1));
+    expect(RULES.split.potBps + RULES.split.backersBps + RULES.split.houseBps).toBe(10_000);
+    expect(a.summary.attempts).toBeGreaterThan(10);
+    // vault 5 never falls to any move, published or invented
+    expect(a.frames.at(-1)!.cracks[4]).toBe(0);
+    // every NEAR is accounted for: wallets + pots + house = what the town started with
+    const start = 5_000 + 4 * RULES.npc.backerStartWallet + [200, 400, 800, 1200, 2500].reduce((x, y) => x + y, 0);
+    const newcomers = a.crews.length * RULES.npc.crewStartWallet;
+    const end = a.crews.reduce((t, c) => t + c.wallet, 0) + a.backers.reduce((t, x) => t + x.wallet + Object.values(x.stakes).reduce((p, q) => p + q, 0), 0) - a.frames.at(-1)!.staked.reduce((p, q) => p + q, 0) + a.frames.at(-1)!.pots.reduce((p, q) => p + q, 0) + a.summary.houseBalance;
+    expect(Math.abs(end - (start + newcomers))).toBeLessThan(1);
+    // every decision carries its reasoning
+    expect(a.events.every((e) => e.reason.length > 10)).toBe(true);
+  });
+});

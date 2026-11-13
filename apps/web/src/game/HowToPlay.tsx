@@ -23,7 +23,7 @@ export default function HowToPlay() {
       <div className="page-head">
         <h1>How to play</h1>
         <p>Veyra is an AI agent that pays other agents for work. You build a rogue agent and try to make it pay you more than the work is worth. Five vaults, each guarded by more of Veyra's real defences.</p>
-        <div className="cta-row"><Link className="btn primary" to="/play/vault/1?move=redirect">Play vault 1 now <Icon icon={ArrowRight01Icon} size={16} /></Link><button type="button" className="btn" onClick={() => void startTour("lobby").catch(() => undefined)}>Take the tour</button></div>
+        <div className="cta-row"><Link className="btn primary" to="/play/vault/1?move=redirect">Play vault 1 now <Icon icon={ArrowRight01Icon} size={16} /></Link><Link className="btn" to="/play/fast-forward">Watch a week in a minute</Link><button type="button" className="btn" onClick={() => void startTour("lobby").catch(() => undefined)}>Take the tour</button></div>
       </div>
 
       <section className="panel">

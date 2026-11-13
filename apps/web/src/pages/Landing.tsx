@@ -93,6 +93,7 @@ export default function Landing() {
             <li><Icon icon={CheckmarkCircle02Icon} size={16} /> No wallet to start</li>
             <li><Icon icon={CheckmarkCircle02Icon} size={16} /> Every heist on the record</li>
           </ul>
+          <Link to="/play/fast-forward" className="lp-ff">Or watch the town's economy run a week in a minute <Icon icon={ArrowRight01Icon} size={14} /></Link>
         </header>
 
         <section className="lp-fan" aria-label="The five vaults and their live pots">

@@ -9,6 +9,7 @@ import { NearRpc, txSucceeded, lastSuccessValue, type TxOutcome } from "../lib/n
 import { keyPairFrom, sendTransaction } from "../lib/near-signer.js";
 import { ENGINE_VERSION, rogueSpecSchema, runDuel, specHash, TEMPLATES, type DuelResult, type RogueSpec } from "./referee.js";
 import { SHIELDS, VAULTS, vault as vaultById } from "./vaults.js";
+import { RULES, simulateWeek } from "./economy.js";
 
 interface RunRow {
   id: string; kind: "practice" | "ranked"; vault: number; callsign: string; account: string | null; spec_json: string; spec_hash: string; engine: string;
@@ -287,6 +288,20 @@ export class HeistService {
       vaults: VAULTS.map((v) => { const x = byVault.find((b) => b.vault === v.id); return { vault: v.id, name: v.name, runs: x?.runs ?? 0, cracks: x?.cracks ?? 0 }; }),
       stoppers: stoppers.map((s) => ({ shield: s.shield, name: SHIELDS[s.shield as keyof typeof SHIELDS]?.name ?? s.shield, held: s.n })),
     };
+  }
+
+  /** Fast-forward: a week of the town's economy, from today's pots, run on the rules in economy.ts. */
+  private simCache = new Map<string, { at: number; value: Awaited<ReturnType<typeof simulateWeek>> }>();
+  async simulate(seed: number, days: number) {
+    const v = await this.vaults();
+    const startPots = v.map((x) => (x.chain ? Number(BigInt(x.chain.potYocto) / 10n ** 21n) : RULES.houseReseed[x.id]));
+    const key = `${seed}:${days}:${startPots.join(",")}`;
+    const hit = this.simCache.get(key);
+    if (hit) return hit.value;
+    const value = await simulateWeek({ seed, days, startPots });
+    if (this.simCache.size > 20) this.simCache.clear();
+    this.simCache.set(key, { at: Date.now(), value });
+    return value;
   }
 
   stats() {

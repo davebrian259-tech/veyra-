@@ -67,4 +67,13 @@ test("climb vaults 1 to 4, lose at vault 5, and see it everywhere", async ({ pag
   await page.keyboard.type("stats");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
+
+  // fast-forward: a simulated week, scrubbed to the end, with NPC reasoning in the feed
+  await page.goto("/play/fast-forward?seed=7");
+  await expect(page.getByRole("button", { name: /Play the week/ })).toBeVisible({ timeout: 30_000 });
+  await page.locator(".ff-scrub input").fill("167");
+  await expect(page.getByRole("heading", { name: "The week in numbers" })).toBeVisible();
+  await expect(page.locator(".ff-events li").first()).toBeVisible();
+  await page.locator(".ff-why").first().click();
+  await expect(page.locator(".explain-pop")).toBeVisible();
 });

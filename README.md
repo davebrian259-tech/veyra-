@@ -9,6 +9,7 @@ no wallet. Ranked heists pay a small entry fee in testnet NEAR to a contract tha
 pot. Crack a vault and the contract pays you the whole pot.
 
 **Tracks:** Games With Real Economies (primary) · AI Security & Defense · Agent Economy
+**For judges:** [docs/HACKATHON.md](docs/HACKATHON.md) has the game loop on paper, the economy, and a checklist against the track brief.
 **Network:** NEAR testnet · pot contract [`veyra-heist-mwdwy8zz.testnet`](https://testnet.nearblocks.io/address/veyra-heist-mwdwy8zz.testnet)
 
 ![The Veyra Heist lobby: your next target, the five vaults with live pots, objectives and live heists](docs/ux-audit/after/lobby-desktop.png)
@@ -97,6 +98,7 @@ The table every move produces. `apps/server/test/heist.test.ts` enforces it on e
 | **How to play** (`/play/learn`) | The rules and the economy in plain words, a money-flow diagram, live fees and pots, the risks, every shield and every move. |
 | **Leaderboard** (`/play/leaderboard`) | Filters, search, a podium, and your own rank pinned at the top. |
 | **Back a vault** (`/play/underwrite`) | Stake on a vault, see your stake and earnings from the contract, withdraw. |
+| **Fast-forward** (`/play/fast-forward`) | A week of the town's economy in a minute: NPC crews, backers and the house, each with a wallet, following the rules in [`economy.ts`](apps/server/src/heist/economy.ts). Every decision says why. |
 | **Stats** (`/play/stats`) | Pots by vault, heists per day, crack rate by vault, what stops heists, your loot over time. Each chart has a table view. |
 | **One heist** (`/play/runs/:id`) | A shareable replay with its proof: spec hash, outcome hash, entry and settlement transactions. |
 
@@ -229,7 +231,7 @@ Game API, all public:
 pnpm --filter @veyra/server test
 ```
 
-68 tests, including the move table above, determinism, replay, the game endpoints, and Veyra's
+69 tests, including the economy simulation (deterministic, conserves every milliNEAR), the move table above, determinism, replay, the game endpoints, and Veyra's
 GUARD, cheques and receipts.
 
 ```bash

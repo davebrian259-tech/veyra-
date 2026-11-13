@@ -185,3 +185,5 @@
   .lp-steps li { padding: var(--s-4); }
   .lp-fair { padding: var(--s-5); }
 }
+.lp-ff { margin-top: var(--s-4); display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--fg-2); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--line-2); }
+.lp-ff:hover { color: var(--fg); }

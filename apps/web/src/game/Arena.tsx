@@ -71,8 +71,12 @@ export default function Arena() {
 
   useEffect(() => {
     if (!vault || tourSeen("arena") || !tourSeen("lobby")) return;
-    const t = setTimeout(() => void startTour("arena"), 600);
-    return () => clearTimeout(t);
+    // a player who is already clicking or typing knows what to do: never interrupt them
+    const cancel = () => clearTimeout(t);
+    const t = setTimeout(() => { window.removeEventListener("pointerdown", cancel); window.removeEventListener("keydown", cancel); void startTour("arena"); }, 900);
+    window.addEventListener("pointerdown", cancel, { once: true });
+    window.addEventListener("keydown", cancel, { once: true });
+    return () => { clearTimeout(t); window.removeEventListener("pointerdown", cancel); window.removeEventListener("keydown", cancel); };
   }, [vault]);
 
   const errors = useMemo(() => ({

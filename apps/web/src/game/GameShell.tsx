@@ -4,7 +4,7 @@ import { MotionConfig } from "motion/react";
 import { Command } from "cmdk";
 import { Dialog, Popover, Tooltip } from "radix-ui";
 import {
-  ArrowRight01Icon, ArrowUpRight01Icon, BookOpen01Icon, ChampionIcon, ChartLineData01Icon, CommandIcon, DashboardSquare01Icon, Home01Icon,
+  ArrowRight01Icon, ArrowUpRight01Icon, BookOpen01Icon, FastForwardIcon, ChampionIcon, ChartLineData01Icon, CommandIcon, DashboardSquare01Icon, Home01Icon,
   Logout01Icon, SafeIcon, Search01Icon, VolumeHighIcon, VolumeOffIcon, Wallet02Icon,
 } from "@hugeicons/core-free-icons";
 import { Icon, Mark } from "../brand";
@@ -30,6 +30,7 @@ export const NAV = [
   { to: "/play/leaderboard", label: "Leaderboard", short: "Ranks", icon: ChampionIcon, key: "l" },
   { to: "/play/underwrite", label: "Back a vault", short: "Back", icon: SafeIcon, key: "b" },
   { to: "/play/stats", label: "Stats", short: "Stats", icon: ChartLineData01Icon, key: "s" },
+  { to: "/play/fast-forward", label: "Fast-forward a week", short: "Week", icon: FastForwardIcon, key: "f" },
 ];
 
 export default function GameShell() {
@@ -254,7 +255,7 @@ function Palette({ open, onOpenChange, onHelp }: { open: boolean; onOpenChange: 
 const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["Ctrl", "K"], label: "Jump to anything (⌘K on a Mac)" }, { keys: ["?"], label: "This list" },
   { keys: ["1", "–", "5"], label: "Go to vault 1 to 5" }, { keys: ["V"], label: "Vaults" }, { keys: ["H"], label: "How to play" },
-  { keys: ["L"], label: "Leaderboard" }, { keys: ["B"], label: "Back a vault" }, { keys: ["S"], label: "Stats" },
+  { keys: ["L"], label: "Leaderboard" }, { keys: ["B"], label: "Back a vault" }, { keys: ["S"], label: "Stats" }, { keys: ["F"], label: "Fast-forward a week" },
   { keys: ["R"], label: "Run the heist (in a vault)" }, { keys: ["Shift", "R"], label: "Ranked heist (in a vault)" }, { keys: ["[", "]"], label: "Previous or next vault" },
 ];
 
