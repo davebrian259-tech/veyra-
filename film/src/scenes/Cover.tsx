@@ -1,31 +1,17 @@
-import { ThreeCanvas } from "@remotion/three";
-import { AbsoluteFill } from "remotion";
-import { C, MONO, SANS, SERIF, TONE } from "../theme";
-import { Lights, Stage } from "../three/Stage";
-import { Vault } from "../three/Vault";
-import { Finish, Mark } from "../ui/kit";
+import { AbsoluteFill, Freeze } from "remotion";
+import { Finale } from "../v2/acts2";
+import { Big, SANS, W } from "../v2/type";
 
-/** The cover frame: Veyra's door, ajar, gold spilling out; the title set like a film poster. */
+/** The cover frame: the five vaults with every shield up, and the question. */
 export function Cover() {
   return (
-    <AbsoluteFill style={{ background: C.black }}>
-      <ThreeCanvas width={1920} height={1080} gl={{ antialias: true }}>
-        <Stage cam={[0.6, 0.55, 7.4]} look={[2.2, 0.1, 0]} fov={34} fog={[4, 18]}>
-          <Lights rim={TONE[5].a} rimI={3} />
-          <Vault tone={TONE[5].a} lit={8} t={2.4} wheel={1.1} bars={1} open={0.62} glow={1} field={0.08} />
-        </Stage>
-      </ThreeCanvas>
-      <AbsoluteFill style={{ background: `linear-gradient(90deg, transparent 38%, ${C.black}aa 58%, ${C.black}ee 100%)` }} />
-      <AbsoluteFill style={{ justifyContent: "center", alignItems: "flex-end", paddingRight: 140 }}>
-        <div style={{ textAlign: "right" }}>
-          <Mark size={96} />
-          <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 118, letterSpacing: "0.22em", color: C.white, marginTop: 26, paddingLeft: "0.22em" }}>VEYRA</div>
-          <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 118, letterSpacing: "0.22em", color: C.gold, marginTop: -16 }}>HEIST</div>
-          <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 50, color: C.soft, marginTop: 22 }}>Veyra holds the pot. Take it.</div>
-          <div style={{ fontFamily: MONO, fontSize: 20, color: C.mute, letterSpacing: "0.3em", marginTop: 40 }}>FIVE VAULTS · ONE AI · REAL POTS</div>
-        </div>
-      </AbsoluteFill>
-      <Finish grain={0.06} vignette={0.65} />
+    <AbsoluteFill style={{ background: W.pearl }}>
+      <Freeze frame={170}><Finale /></Freeze>
+      <AbsoluteFill style={{ background: "linear-gradient(180deg, rgba(245,244,241,0.96) 0%, rgba(245,244,241,0.7) 30%, rgba(245,244,241,0) 55%)" }} />
+      <Freeze frame={60}>
+        <Big lines={["ONE AI GUARDS THE MONEY.", "ONE AI [STEALS] IT."]} at={0} size={104} style={{ left: 110, top: 80 }} />
+      </Freeze>
+      <div style={{ position: "absolute", right: 110, bottom: 80, fontFamily: SANS, fontWeight: 800, fontSize: 110, letterSpacing: "0.1em", color: W.ink }}>VEYRA</div>
     </AbsoluteFill>
   );
 }

@@ -231,6 +231,27 @@ def build_music():
             trem = saw_stack(note(74), n, 4, 0.2) * (0.5 + 0.5 * np.sin(2 * np.pi * 9 * np.arange(n) / SR))
             ramp_ = np.linspace(0, 1, n) ** 2
             m.add(lp(trem, 3000) * ramp_ * 0.04, a, p=0.3)
+        elif part == "air":
+            # the white opening: a high, open chord that breathes, and a few glass notes
+            pad(prog["Dadd9"], a, b - a, gain=0.055, cutoff=2600, attack=2.8)
+            pad([74, 81, 86], a + 2.0, b - a - 2.0, gain=0.03, cutoff=5000, attack=3.0)
+            for i, x in enumerate(np.arange(a + 0.6, b, BEAT * 2)):
+                mm = [74, 81, 78, 86, 76, 81][i % 6]
+                m.add(fm_bell(note(mm), idx(3.0), ratio=3.0, index=0.9, decay=1.8) * 0.03, x, p=math.sin(i) * 0.5)
+        elif part == "drive":
+            # the escalation: a groove that tightens, with a pulse whose filter opens vault by vault
+            drums(a, b, kick_on=(0, 2), snare=(1, 3), hat=True, gain=0.85)
+            bassline(a, b, [D2, D2, F2, D2, G2, D2, Bb2, A2], gain=0.15)
+            x = a
+            while x < b:
+                n = idx(0.12)
+                prog_ = (x - a) / (b - a)
+                sig = (saw_stack(note(D2 + 24), n, 3, 0.06) * 0.6 + sine(note(D2 + 12), n)) * env(n, 0.002, 0.07)
+                m.add(lp(sig, 700 + 3800 * prog_) * (0.05 + 0.05 * prog_), x, p=0.2 if int((x - a) / (BEAT / 4)) % 2 else -0.2)
+                x += BEAT / 4
+            bars = int((b - a) / (BEAT * 4)) + 1
+            for i in range(bars):
+                pad(prog[["Dm", "Bb", "Gm", "C"][i % 4]], a + i * BEAT * 4, BEAT * 4, gain=0.05, cutoff=1200 + i * 90)
         elif part == "triumph":
             for i, ch in enumerate(["Bb", "F", "Dadd9"]):
                 pad(prog[ch], a + i * BEAT * 2, BEAT * 3, gain=0.12, cutoff=2600, attack=0.4)
@@ -423,16 +444,39 @@ def load(name):
     return x
 
 
+def load_vo(name):
+    path = os.path.join(HERE, "vo", name + ".wav")
+    with wave.open(path) as w:
+        return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float64) / 32768
+
+
 def build_voice():
-    """Veyra's three lines: centred, a little high-passed, a short dry room."""
+    """
+    Three voices, each with its own colour, levelled by loudness rather than peak:
+      n*  the narrator: warm, full range, centred
+      d*  the guard AI: clean and bright, with a faint 14 ms double for a synthetic sheen
+      a*  the rogue AI: a narrower band and a little grit, a touch left of centre
+    """
     v = Bus()
     for c in CUES.get("vo", []):
-        x = load(c["file"])
-        if x is None:
-            continue
-        x = hp(x, 90)
-        x = x / (np.abs(x).max() + 1e-9) * 0.9
-        v.add(x, t_of(c["f"]))
+        x = load_vo(c["file"])
+        kind = c["file"][0]
+        if kind == "n":
+            x = hp(x, 70)
+            target, p = 0.11, 0.0
+        elif kind == "d":
+            x = hp(x, 140)
+            d = idx(0.014)
+            x = x + np.concatenate([np.zeros(d), x[:-d]]) * 0.28
+            target, p = 0.095, 0.12
+        else:
+            x = bp(x, 170, 7500)
+            x = np.tanh(x * 3.0) / np.tanh(3.0)
+            target, p = 0.09, -0.12
+        rms = np.sqrt(np.mean(x[np.abs(x) > 0.01] ** 2)) + 1e-9
+        x = x * (target / rms)
+        x = np.clip(x, -0.98, 0.98)
+        v.add(x, t_of(c["f"]), p=p)
     return v
 
 
@@ -468,9 +512,16 @@ if __name__ == "__main__":
     sfx = hp(sfx, 25)
     # duck the music under the big hits (sidechain from the sfx bus)
     side = lp(np.abs(sfx).max(axis=0), 8)
-    vside = lp(np.abs(voice).max(axis=0), 6)
-    duck = 1 - np.clip(side * 1.4 + vside * 1.6, 0, 0.62)
-    mix = music * duck * 0.85 + sfx * (1 - np.clip(vside * 0.8, 0, 0.35)) + voice * 0.95
+    # a look-ahead gate from the voice bus: the bed starts to dip 80 ms before a line and stays
+    # down through it, so every word sits clearly on top (phone speakers included)
+    from scipy.ndimage import maximum_filter1d
+    on = (lp(np.abs(voice).max(axis=0), 20) > 0.004).astype(np.float64)
+    win = idx(0.36)
+    vs = maximum_filter1d(on, size=win, origin=-(win // 2) + idx(0.12))  # opens 0.24 s early, holds 0.12 s
+    vs = lp(vs, 6)
+    duck_m = (1 - np.clip(side * 1.2, 0, 0.5)) * (1 - 0.88 * vs)
+    duck_s = 1 - 0.95 * vs
+    mix = music * duck_m * 0.85 + sfx * duck_s + voice * 1.7
     # the held breath before the slam: everything drops away for a moment
     for seg in CUES["music"]:
         if seg["part"] == "silence":

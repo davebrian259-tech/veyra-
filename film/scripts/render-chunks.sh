@@ -3,7 +3,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p out/chunks
-for r in 0-569 570-959 960-1634 1635-2309 2310-2549 2550-2789; do
+for r in 0-509 510-899 900-1289 1290-1649 1650-2099 2100-2639; do
   f="out/chunks/c-${r}.mp4"
   [ -s "$f" ] && { echo "skip $r"; continue; }
   for attempt in 1 2 3; do
