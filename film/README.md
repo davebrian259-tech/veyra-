@@ -27,6 +27,10 @@ on screen is the real referee's output; the economy is the game's own fast-forwa
   Instrument Serif.
 - **Data:** `src/data/` holds the real referee steps for the crack and the hold, a fast-forwarded
   week from `/heist/simulate`, the loot catalogue and the vaults, pulled from the game's API.
+- **Voice:** Veyra speaks three times, never narrating: "Try." after the dare, "Nice try." after
+  the vault 5 slam, "Come and take it." over the title. ElevenLabs (voice: Lily), with three
+  ElevenLabs sound effects (the slam, the bolts, the gold) layered under the synthesized ones.
+  The clips are in `audio/eleven/`; their frames are in the cue sheet.
 - **Timing:** `src/cues.json` is the cue sheet shared by picture and sound. 96 BPM at 24 fps is
   exactly 15 frames a beat; cuts and hits land on beats.
 - **Sound:** `audio/score.py` synthesizes the music (drone, pulse, build, groove, tension, triumph,
@@ -46,7 +50,7 @@ npx remotion studio src/index.ts
 ```
 
 ```bash
-npx remotion render src/index.ts VeyraHeist out/veyra-heist-silent.mp4 --gl=swangle --concurrency=4 --muted
+scripts/render-chunks.sh   # scene-aligned chunks, retried; or one pass with: npx remotion render src/index.ts VeyraHeist out/veyra-heist-silent.mp4 --gl=swangle --muted
 ```
 
 ```bash

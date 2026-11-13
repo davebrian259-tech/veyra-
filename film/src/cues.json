@@ -405,5 +405,39 @@
    "to": 2790,
    "part": "finale"
   }
+ ],
+ "vo": [
+  {
+   "f": 528,
+   "file": "vo1",
+   "line": "Try."
+  },
+  {
+   "f": 1785,
+   "file": "vo2",
+   "line": "Nice try."
+  },
+  {
+   "f": 2714,
+   "file": "vo3",
+   "line": "Come and take it."
+  }
+ ],
+ "eleven": [
+  {
+   "f": 1459,
+   "file": "sfx-bolts",
+   "gain": 0.55
+  },
+  {
+   "f": 1495,
+   "file": "sfx-gold",
+   "gain": 0.45
+  },
+  {
+   "f": 1755,
+   "file": "sfx-slam",
+   "gain": 0.85
+  }
  ]
 }

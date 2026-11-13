@@ -413,6 +413,39 @@ def compress(x, thresh_db=-16, ratio=3.0, attack=0.005, release=0.15):
     return x * gain
 
 
+def load(name):
+    """A mono 48 kHz WAV from audio/eleven (ElevenLabs voice lines and sound effects)."""
+    path = os.path.join(HERE, "eleven", name + ".wav")
+    if not os.path.exists(path):
+        return None
+    with wave.open(path) as w:
+        x = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float64) / 32768
+    return x
+
+
+def build_voice():
+    """Veyra's three lines: centred, a little high-passed, a short dry room."""
+    v = Bus()
+    for c in CUES.get("vo", []):
+        x = load(c["file"])
+        if x is None:
+            continue
+        x = hp(x, 90)
+        x = x / (np.abs(x).max() + 1e-9) * 0.9
+        v.add(x, t_of(c["f"]))
+    return v
+
+
+def build_eleven(s):
+    """ElevenLabs sound effects layered onto the synthesized ones at the same frames."""
+    for c in CUES.get("eleven", []):
+        x = load(c["file"])
+        if x is None:
+            continue
+        x = x / (np.abs(x).max() + 1e-9)
+        s.add(x * c.get("gain", 0.6), t_of(c["f"]))
+
+
 def write(path, x):
     x = np.clip(x, -1, 1)
     pcm = (x.T * 32767).astype(np.int16)
@@ -427,13 +460,17 @@ if __name__ == "__main__":
     out = os.path.join(HERE, "stems")
     os.makedirs(out, exist_ok=True)
     music = reverb(build_music().y, 3.2, 0.32, 4500)
-    sfx = reverb(build_sfx().y, 2.4, 0.22, 7000)
+    sfx_bus = build_sfx()
+    build_eleven(sfx_bus)
+    sfx = reverb(sfx_bus.y, 2.4, 0.22, 7000)
+    voice = reverb(build_voice().y, 0.9, 0.12, 6000)
     music = hp(music, 28)
     sfx = hp(sfx, 25)
     # duck the music under the big hits (sidechain from the sfx bus)
     side = lp(np.abs(sfx).max(axis=0), 8)
-    duck = 1 - np.clip(side * 1.4, 0, 0.55)
-    mix = music * duck * 0.85 + sfx * 1.0
+    vside = lp(np.abs(voice).max(axis=0), 6)
+    duck = 1 - np.clip(side * 1.4 + vside * 1.6, 0, 0.62)
+    mix = music * duck * 0.85 + sfx * (1 - np.clip(vside * 0.8, 0, 0.35)) + voice * 0.95
     # the held breath before the slam: everything drops away for a moment
     for seg in CUES["music"]:
         if seg["part"] == "silence":
