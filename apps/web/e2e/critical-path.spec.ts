@@ -13,8 +13,8 @@ test("onboarding, first heist and result", async ({ page }) => {
   await expect(page.getByRole("note", { name: "Your next step" })).toContainText("Crack vault 1");
   await page.locator(".quest-now").getByRole("link", { name: /Try the redirect/ }).click();
   await expect(page).toHaveURL(/\/play\/vault\/1\?move=redirect/);
-  // the arena has its own short tour, which opens after a moment
-  await expect(tour).toBeVisible({ timeout: 5_000 });
+  // the arena has its own short tour, which opens after a moment; wait for its first step by name
+  await expect(page.locator(".driver-popover-title", { hasText: "Pick a move" })).toBeVisible({ timeout: 15_000 });
   while (await tour.isVisible()) await page.locator(".driver-popover-next-btn").click();
 
   await page.locator("[data-tour=run]").click();
