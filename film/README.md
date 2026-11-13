@@ -1,5 +1,7 @@
 # VEYRA HEIST: the launch film
 
+![Cover frame](../docs/media/veyra-heist-cover.png)
+
 A 116-second cinematic for Veyra Heist, made entirely in code: the picture in React and Three.js
 with [Remotion](https://www.remotion.dev), the score synthesized from scratch in Python. Every heist
 on screen is the real referee's output; the economy is the game's own fast-forward simulation.
@@ -36,8 +38,11 @@ on screen is the real referee's output; the economy is the game's own fast-forwa
 - **Sound:** `audio/score.py` synthesizes the music (drone, pulse, build, groove, tension, triumph,
   finale in D minor) and every effect (bolt latches panned around the door, locking clunks, the
   creak, the slam, coins, the clock) at the cue sheet's frames, with a stereo synthetic-room reverb,
-  sidechain ducking, glue compression and a soft clip. `scripts/mux.sh` masters it to -14 LUFS,
-  -1 dBTP (two-pass EBU R128) and muxes it onto the picture.
+  sidechain ducking, glue compression and a soft clip. `scripts/mux.sh` masters it to -14 LUFS with
+  a 4x-oversampled limiter (true peak under -1 dBTP) and makes the one final H.264 encode.
+- **Delivered master:** 1920x1080, 24 fps, H.264 High, yuv420p (BT.709, standard range), AAC-LC
+  stereo 48 kHz 320 kbps, 1:56 (116.25 s), -14.1 LUFS integrated, -1.4 dBTP. The MP4 itself is
+  not committed (127 MB); render it with the steps below.
 
 ## Build it
 
