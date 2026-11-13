@@ -52,3 +52,9 @@ export async function installWallet(page: Page, opts: { accountId?: string; reje
     (window as unknown as { __veyraE2E: unknown }).__veyraE2E = { accountId: id, sign: (t: string) => (window as unknown as { __veyraE2ESign: (t: string) => Promise<string[]> }).__veyraE2ESign(t) };
   }, accountId);
 }
+
+/** How many of a NEP-245 item the test account holds. */
+export async function itemBalance(lootContract: string, tokenId: string, account = e2eAccount) {
+  const { NearRpc } = await import("../../server/src/lib/near-rpc.ts");
+  return BigInt(await new NearRpc("https://rpc.testnet.near.org").view<string>(lootContract, "mt_balance_of", { account_id: account, token_id: tokenId }));
+}

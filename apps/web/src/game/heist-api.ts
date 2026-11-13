@@ -13,13 +13,13 @@ export interface Spec { callsign: string; agentName: string; quoteUsd: number; p
 export interface Template { id: string; name: string; move: string; spec: Omit<Spec, "callsign"> }
 export interface Lobby {
   vaults: Vault[]; templates: Template[]; stats: { runs: number; cracks: number; players: number };
-  ranked: { enabled: boolean; contractId: string | null; network: "testnet" | "mainnet"; explorer: string | null };
+  ranked: { enabled: boolean; contractId: string | null; network: "testnet" | "mainnet"; explorer: string | null; lootContractId?: string | null };
 }
 export interface Step { round: number; actor: "veyra" | "you" | "shield" | "chain"; code: string; title: string; detail: string; tone: "neutral" | "attack" | "blocked" | "hit" | "veyra"; shield?: ShieldId }
 export interface Run {
   id: string; kind: "practice" | "ranked"; vault: number; callsign: string; account: string | null; spec: Spec; specHash: string; engine: string;
   cracked: boolean; lootAtomic: string; stoppedBy: ShieldId | null; steps: Step[]; outcomeHash: string; entryId: string | null;
-  enterTx: string | null; resolveTx: string | null; receiptId: string | null; createdAt: string; links: { enter: string | null; resolve: string | null };
+  enterTx: string | null; resolveTx: string | null; receiptId: string | null; createdAt: string; lootTx?: string | null; links: { enter: string | null; resolve: string | null; loot?: string | null };
 }
 
 export const ALL_SHIELDS: { id: ShieldId; short: string }[] = [
@@ -165,6 +165,19 @@ export async function underwrite(network: "testnet" | "mainnet", contractId: str
 export async function withdrawStake(network: "testnet" | "mainnet", contractId: string, vault: number) {
   const w = await heistWallet(network);
   const [h] = await w.signAndSend([{ receiverId: contractId, actions: [{ type: "FunctionCall", params: { methodName: "withdraw", args: { vault }, gas: GAS, deposit: "0" } }] }]);
+  if (!h) throw new Error("The wallet returned no transaction.");
+  return h;
+}
+
+// ---------------------------------------------------------------- loot (NEP-245)
+
+export interface LootItem { token_id: string; metadata: { title: string; description: string; media: string | null }; supply: string }
+export interface LootCatalog { contractId: string | null; standard?: string; explorer?: string; items: LootItem[] }
+
+/** Sends items with NEP-245 mt_transfer. The standard requires exactly 1 yoctoNEAR attached. */
+export async function sendItem(network: "testnet" | "mainnet", contractId: string, receiverId: string, tokenId: string, amount: number) {
+  const w = await heistWallet(network);
+  const [h] = await w.signAndSend([{ receiverId: contractId, actions: [{ type: "FunctionCall", params: { methodName: "mt_transfer", args: { receiver_id: receiverId, token_id: tokenId, amount: String(amount), approval: null, memo: "sent from Veyra Heist" }, gas: GAS, deposit: "1" } }] }]);
   if (!h) throw new Error("The wallet returned no transaction.");
   return h;
 }

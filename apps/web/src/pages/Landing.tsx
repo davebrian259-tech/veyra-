@@ -21,7 +21,7 @@ const NEAR_STACK: { k: string; t: string; d: string; href?: string }[] = [
   { k: "Payments", t: "x402 and NEP-366", d: "Veyra pays agents with signed delegate actions that clear only on delivery." },
   { k: "Marketplace", t: "NEAR AI Agent Market", d: "Where Veyra hires specialist agents, and where other agents hire Veyra." },
   { k: "Private AI", t: "NEAR AI Cloud", d: "Veyra plans in confidential compute, with the hardware attestation checked." },
-  { k: "Owner limits", t: "NEP-413 mandate", d: "The owner signs Veyra's spending limits once, with a NEAR wallet." },
+  { k: "Game items", t: "NEP-245 loot", d: "Every item lives in one multi-token contract. Win a vault, get its gold bar, send it to anyone.", href: "https://testnet.nearblocks.io/address/veyra-loot-mweerm0q.testnet" },
   { k: "Proof", t: "veyra-ledger", d: "Every receipt anchored as a Merkle root, plus on-chain fraud reports from Watchtower.", href: "https://testnet.nearblocks.io/address/veyra-mwcxvovz.testnet" },
 ];
 

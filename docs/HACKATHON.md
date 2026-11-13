@@ -2,7 +2,7 @@
 
 **Track:** Games With Real Economies (`games`): *the economy is the gameplay.*
 **Also relevant to:** AI Security & Defense, Agent Economy.
-**Play:** https://veyra-ccp.pages.dev · **Pot contract:** [`veyra-heist-mwdwy8zz.testnet`](https://testnet.nearblocks.io/address/veyra-heist-mwdwy8zz.testnet)
+**Play:** https://veyra-ccp.pages.dev · **Pot contract:** [`veyra-heist-mwdwy8zz.testnet`](https://testnet.nearblocks.io/address/veyra-heist-mwdwy8zz.testnet) · **Loot (NEP-245):** [`veyra-loot-mweerm0q.testnet`](https://testnet.nearblocks.io/address/veyra-loot-mweerm0q.testnet)
 
 Veyra is an AI agent that pays other agents for their work. In Veyra Heist you build a rogue
 agent and try to make it overpay. Five vaults hold real pots on NEAR, each guarded by more of
@@ -15,7 +15,7 @@ on vaults holding. Nobody sets the prices: the pots are the market.
 |---|---|---|
 | **30 seconds** | Picks a move, tweaks the price, payee or deliverable, presses <kbd>R</kbd>, and watches the Heist Cam play the duel round by round. | They crack it (loot, confetti, a new move unlocked) or see the exact shield that stopped them. Then they change one thing and go again. |
 | **5 minutes** | Climbs a vault. Reads the hint, learns why a shield exists, and unlocks the move that beats the next one. Checks the live feed and the leaderboard. | Their rank, their climb (0 to 5), and the objective panel's next step. |
-| **A session** | Plays ranked for a real pot (testnet NEAR), or backs the vault they believe will hold. Fast-forwards a week to see where the money flows. | Real pots on-chain: their fee grows a pot or they take it. Their stake earns from other people's failures or is lost to a crack. |
+| **A session** | Plays ranked for a real pot (testnet NEAR), or backs the vault they believe will hold. Fast-forwards a week to see where the money flows. | Real pots on-chain: their fee grows a pot or they take it, along with the vault's gold bar (a NEP-245 item they own and can send). Their stake earns from other people's failures or is lost to a crack. |
 
 The first session needs no wallet at all. Practice is free and instant, and a new player cracks
 vault 1 within a minute of landing.
@@ -91,16 +91,19 @@ The fast-forward runs on that file, and the Fast-forward screen links to it.
 | Fast-forward a week in a minute | **Done.** `/play/fast-forward`, deterministic per week number, shareable by link. |
 | No seed phrases, popups or gas in the normal loop | **Done for practice**, which is the whole normal loop. Ranked play uses a NEAR wallet by design. |
 | Social or email login | **Not built.** Practice needs no login at all. Ranked uses the NEAR Wallet Selector (Meteor, MyNearWallet, HERE). |
-| NEP-245 multi tokens | **Not built.** Loot is NEAR in the pot, paid by the contract. Trophies as NEP-245 tokens would be the next step. |
+| NEP-245 multi tokens | **Done.** [`veyra-loot`](https://testnet.nearblocks.io/address/veyra-loot-mweerm0q.testnet) holds every item type in one contract: a gold bar per vault, minted by the referee to each ranked winner. Players send them with `mt_transfer` from the Loot screen. Implements the NEP-245 core, metadata and events, with tests. |
 | NEAR Intents | Used by the agent behind the game (its vault is a NEAR Intents Agent API policy wallet), not in the game loop. |
 
 ## What is real, and how to check it
 
-- **The contract:** `contracts/heist`, deployed on testnet, with tests for fees, settlement,
-  splits, staking and reclaim.
+- **The contracts:** `contracts/heist` (pots, entries, settlement, splits, staking, reclaim) and
+  `contracts/loot` (NEP-245 items: mint, transfer, batch, transfer-and-call with refunds,
+  supply, events), both deployed on testnet with unit tests.
 - **A real win on testnet, tested end to end:** the Playwright test `ranked-crack.spec.ts`
-  connects a wallet, enters vault 1 with real testnet NEAR and cracks it. It then checks that the
-  contract paid the pot to the player's wallet, and seeds the pot back.
+  connects a wallet, enters vault 1 with real testnet NEAR and cracks it. It checks that the
+  contract paid the pot to the player's wallet and that the referee minted the vault's gold bar
+  (NEP-245). Then it sends the bar to another account from the Loot screen and checks it left.
+  Finally it seeds the pot back.
 - **Backing and withdrawing on testnet:** `backing.spec.ts` stakes 0.1 NEAR on vault 5, reads
   the stake back from the contract, and withdraws it.
 - **The whole climb in a browser:** `climb.spec.ts` cracks vaults 1 to 4 using unlocked moves,

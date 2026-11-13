@@ -41,7 +41,7 @@ export default function HowToPlay() {
         <p className="muted">Practice heists are free and use play money. Ranked heists use real testnet NEAR, held by the Heist contract{ranked.contractId ? <> (<a href={ranked.explorer ?? "#"} target="_blank" rel="noreferrer" className="mono">{ranked.contractId}</a>)</> : null}. Veyra never holds your fee.</p>
         <MoneyFlow />
         <div className="grid-3 learn-cards">
-          <div><h3>Crack it</h3><p>The contract pays you the <b>whole pot</b>, backers' stakes included, plus your fee back. The vault's pot starts again from zero.</p></div>
+          <div><h3>Crack it</h3><p>The contract pays you the <b>whole pot</b>, backers' stakes included, plus your fee back, and you get the vault's <Link to="/play/loot">gold bar</Link>, a NEP-245 item you own. The pot starts again from zero.</p></div>
           <div><h3>Get stopped</h3><p>Your fee splits: <b>70%</b> into the pot, <b>20%</b> to the vault's backers, <b>10%</b> to the house, which seeds new pots. Every failure makes the vault richer.</p></div>
           <div><h3>Back a vault</h3><p>Stake NEAR on a vault holding. You earn your share of the 20% from every failed entry. If someone cracks it, you lose the stake. Withdraw any time before that.</p></div>
         </div>

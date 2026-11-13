@@ -14,7 +14,7 @@ import { RULES, simulateWeek } from "./economy.js";
 interface RunRow {
   id: string; kind: "practice" | "ranked"; vault: number; callsign: string; account: string | null; spec_json: string; spec_hash: string; engine: string;
   cracked: number; loot_atomic: string; stopped_by: string | null; steps_json: string; outcome_hash: string; entry_id: string | null; enter_tx: string | null;
-  resolve_tx: string | null; receipt_id: string | null; created_at: string;
+  resolve_tx: string | null; receipt_id: string | null; created_at: string; loot_tx: string | null;
 }
 
 interface OnChainVault { fee: string; pot: string; staked: string; attempts: number; cracks: number; epoch: number; last_cracked_by: string | null }
@@ -29,6 +29,7 @@ const nearToYocto = (n: string) => {
 export class HeistService {
   readonly network: "testnet" | "mainnet";
   readonly contractId: string | null;
+  readonly lootContractId: string | null;
   private readonly rpc: NearRpc;
   private readonly referee: { accountId: string; keyPair: ReturnType<typeof keyPairFrom> } | null;
   private hits = new Map<string, number[]>();
@@ -37,6 +38,7 @@ export class HeistService {
   constructor(private readonly db: Db, private readonly receipts: ReceiptService, private readonly config: Config, fetcher?: typeof fetch) {
     this.network = config.HEIST_NETWORK;
     this.contractId = config.HEIST_CONTRACT_ID ?? null;
+    this.lootContractId = config.LOOT_CONTRACT_ID ?? null;
     this.rpc = new NearRpc(this.network === "mainnet" ? config.NEAR_MAINNET_RPC_URL : "https://rpc.testnet.near.org", fetcher);
     const id = config.HEIST_REFEREE_ID ?? config.LEDGER_WRITER_ID;
     const key = config.HEIST_REFEREE_KEY ?? config.LEDGER_WRITER_KEY;
@@ -134,7 +136,42 @@ export class HeistService {
       actionCreators.functionCall("resolve", { entry_id: String(entryId), cracked: r.cracked, loot: r.lootAtomic, outcome_hash: r.outcomeHash }, 100_000_000_000_000n, 0n),
     ]);
     this.chainCache.at = 0;
-    return this.store("ranked", spec, r, { account: input.accountId, entryId: String(entryId), enterTx: input.txHash, resolveTx: res.transaction.hash });
+    const stored = this.store("ranked", spec, r, { account: input.accountId, entryId: String(entryId), enterTx: input.txHash, resolveTx: res.transaction.hash });
+    if (r.cracked) await this.mintBar(stored.id, input.accountId, args.vault);
+    return this.get(stored.id);
+  }
+
+  /**
+   * A ranked crack earns the vault's gold bar, minted as a NEP-245 token in veyra-loot. The pot is
+   * already paid by then; if the mint fails the run still stands and the mint can be retried.
+   */
+  async mintBar(runId: string, account: string, vault: number) {
+    if (!this.lootContractId || !this.referee) return null;
+    try {
+      const res = await sendTransaction(this.rpc, this.referee.accountId, this.referee.keyPair, this.lootContractId, [
+        actionCreators.functionCall("mt_mint", { owner_id: account, token_ids: [`bar-${vault}`], amounts: ["1"], memo: `Veyra Heist ${runId}` }, 30_000_000_000_000n, 0n),
+      ]);
+      if (txSucceeded(res as unknown as TxOutcome) === false) return null; // send_tx reports a failed call without throwing
+      this.db.run("UPDATE heist_runs SET loot_tx = ? WHERE id = ?", [res.transaction.hash, runId]);
+      return res.transaction.hash;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Every item type in the loot contract, with supply. */
+  async lootItems() {
+    if (!this.lootContractId) return { contractId: null, items: [] };
+    const items = await this.rpc.view<{ token_id: string; metadata: { title: string; description: string; media: string | null }; supply: string }[]>(this.lootContractId, "items", {}).catch(() => []);
+    return { contractId: this.lootContractId, standard: "NEP-245", explorer: this.explorer("address", this.lootContractId), items };
+  }
+
+  /** A wallet's items, read from the loot contract with mt_batch_balance_of. */
+  async lootOf(account: string) {
+    if (!this.lootContractId) return { account, balances: {} as Record<string, string> };
+    const ids = VAULTS.map((v) => `bar-${v.id}`);
+    const bal = await this.rpc.view<string[]>(this.lootContractId, "mt_batch_balance_of", { account_id: account, token_ids: ids }).catch(() => ids.map(() => "0"));
+    return { account, balances: Object.fromEntries(ids.map((id, i) => [id, bal[i] ?? "0"])) };
   }
 
   private parseSpec(input: unknown): RogueSpec {
@@ -168,7 +205,8 @@ export class HeistService {
       id: r.id, kind: r.kind, vault: r.vault, callsign: r.callsign, account: r.account, spec: parse<RogueSpec>(r.spec_json), specHash: r.spec_hash, engine: r.engine,
       cracked: Boolean(r.cracked), lootAtomic: r.loot_atomic, stoppedBy: r.stopped_by, steps: parse(r.steps_json), outcomeHash: r.outcome_hash,
       entryId: r.entry_id, enterTx: r.enter_tx, resolveTx: r.resolve_tx, receiptId: r.receipt_id, createdAt: r.created_at,
-      links: { enter: r.enter_tx ? this.explorer("txns", r.enter_tx) : null, resolve: r.resolve_tx ? this.explorer("txns", r.resolve_tx) : null },
+      lootTx: r.loot_tx ?? null,
+      links: { enter: r.enter_tx ? this.explorer("txns", r.enter_tx) : null, resolve: r.resolve_tx ? this.explorer("txns", r.resolve_tx) : null, loot: r.loot_tx ? this.explorer("txns", r.loot_tx) : null },
     };
   }
 

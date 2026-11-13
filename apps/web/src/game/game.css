@@ -538,3 +538,24 @@ button.explain.shield-explain:hover .shield-token { border-color: var(--line-2);
 .ff-badge { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--bg-2); border: 1px solid var(--line-2); font-family: var(--mono); font-size: 12px; flex: none; }
 @media (max-width: 1180px) { .ff-vaults { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .ff-vaults { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ff-vaults > :last-child { grid-column: 1 / -1; } }
+
+/* loot (NEP-245) */
+.loot-contract { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-4); }
+.loot-contract > div { display: grid; gap: 4px; min-width: 0; }
+.loot-contract a { overflow-wrap: anywhere; font-size: var(--fs-sm); }
+.loot-contract .stat-k { font-size: var(--fs-xs); color: var(--fg-3); }
+.loot-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s-3); }
+.loot-item { display: grid; gap: var(--s-2); justify-items: start; padding: var(--s-4); }
+.loot-item .vault-art { justify-self: center; }
+.loot-item h2 { font-size: var(--fs-md); }
+.loot-item .ff-kv { width: 100%; }
+.loot-item.owned { border-color: rgb(245 196 81 / 0.5); }
+.loot-send { grid-template-columns: 1.4fr 1.4fr 0.7fr auto; align-items: start; }
+.won-item { display: flex; align-items: center; justify-content: center; gap: var(--s-2); flex-wrap: wrap; font-size: var(--fs-sm); }
+@media (max-width: 1180px) { .loot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+  .loot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .loot-contract { grid-template-columns: 1fr 1fr; }
+  .loot-send { grid-template-columns: 1fr; }
+  .arena-bottom { grid-template-columns: repeat(6, 1fr); }
+}

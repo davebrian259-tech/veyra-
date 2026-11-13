@@ -17,7 +17,7 @@ export function heistRoutes(app: FastifyInstance, ctx: AppContext) {
     vaults: await H.vaults(),
     templates: H.templates(),
     stats: H.stats(),
-    ranked: { enabled: H.rankedEnabled, contractId: H.contractId, network: H.network, explorer: H.contractId ? H.explorer("address", H.contractId) : null },
+    ranked: { enabled: H.rankedEnabled, contractId: H.contractId, network: H.network, explorer: H.contractId ? H.explorer("address", H.contractId) : null, lootContractId: H.lootContractId },
   }));
   app.get("/heist/leaderboard", async (req) => ({ players: H.leaderboard(query(z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) }), req).limit) }));
   app.get("/heist/runs", async (req) => {
@@ -37,6 +37,8 @@ export function heistRoutes(app: FastifyInstance, ctx: AppContext) {
     return H.ranked(b);
   });
   app.get("/heist/series", async () => H.series());
+  app.get("/heist/loot", async () => H.lootItems());
+  app.get("/heist/loot/:account", async (req) => H.lootOf(z.string().regex(/^[a-z0-9._-]{2,64}$/).parse(params(req).account)));
   app.get("/heist/simulate", async (req) => {
     const q = query(z.object({ seed: z.coerce.number().int().min(1).max(1_000_000).default(7), days: z.coerce.number().int().min(1).max(14).default(7) }), req);
     return H.simulate(q.seed, q.days);

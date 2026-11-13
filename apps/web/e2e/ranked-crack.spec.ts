@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { callFromTestAccount, e2eAccount, hasTestnetKey, installWallet, testAccountBalance } from "./wallet";
+import { callFromTestAccount, e2eAccount, hasTestnetKey, installWallet, itemBalance, testAccountBalance } from "./wallet";
 
 /**
  * Winning for real: a ranked crack of vault 1 on testnet, paid by the pot contract to the player's
@@ -15,6 +15,8 @@ test("ranked crack pays the pot to the player's wallet", async ({ page }, info) 
   const contract = lobby.ranked.contractId as string;
   const pot = BigInt(lobby.vaults[0].chain.potYocto);
   const before = await testAccountBalance();
+  const loot = lobby.ranked.lootContractId as string | null;
+  const barsBefore = loot ? await itemBalance(loot, "bar-1") : 0n;
 
   await page.goto("/play/vault/1?move=redirect");
   await expect(page.getByRole("button", { name: `Wallet ${e2eAccount}` })).toBeVisible();
@@ -29,6 +31,23 @@ test("ranked crack pays the pot to the player's wallet", async ({ page }, info) 
 
   // the wallet gained the pot (minus gas): fee out, pot + fee back
   await expect.poll(async () => (await testAccountBalance()) - before, { timeout: 30_000 }).toBeGreaterThan((pot * 9n) / 10n);
+
+  // the win also minted the vault's gold bar, a NEP-245 token, to the player's wallet
+  if (loot) {
+    await expect(page.locator(".won-item")).toContainText("gold bar");
+    await expect.poll(() => itemBalance(loot, "bar-1"), { timeout: 30_000 }).toBe(barsBefore + 1n);
+
+    // and the player can send it to someone else from the Loot screen
+    await page.goto("/play/loot");
+    await expect(page.locator(".loot-item.owned").first()).toBeVisible({ timeout: 30_000 });
+    await page.getByLabel("To (NEAR account)").fill("veyra-mwcxvovz.testnet");
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+    const send = page.locator(".sheet");
+    await expect(send).toContainText("Security deposit");
+    await send.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(send.locator(".tx-step.done", { hasText: "Done" })).toBeVisible({ timeout: 90_000 });
+    await expect.poll(() => itemBalance(loot, "bar-1"), { timeout: 30_000 }).toBe(barsBefore);
+  }
 
   // put the pot back so the next players have something to take
   await callFromTestAccount(contract, "seed", { vault: 1 }, pot > 0n ? pot : 2n * 10n ** 23n);

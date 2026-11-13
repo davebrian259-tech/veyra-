@@ -4,7 +4,7 @@ import { MotionConfig } from "motion/react";
 import { Command } from "cmdk";
 import { Dialog, Popover, Tooltip } from "radix-ui";
 import {
-  ArrowRight01Icon, ArrowUpRight01Icon, BookOpen01Icon, FastForwardIcon, ChampionIcon, ChartLineData01Icon, CommandIcon, DashboardSquare01Icon, Home01Icon,
+  ArrowRight01Icon, ArrowUpRight01Icon, BookOpen01Icon, Coins01Icon, FastForwardIcon, ChampionIcon, ChartLineData01Icon, CommandIcon, DashboardSquare01Icon, Home01Icon,
   Logout01Icon, SafeIcon, Search01Icon, VolumeHighIcon, VolumeOffIcon, Wallet02Icon,
 } from "@hugeicons/core-free-icons";
 import { Icon, Mark } from "../brand";
@@ -29,7 +29,8 @@ export const NAV = [
   { to: "/play", label: "Vaults", short: "Vaults", icon: Home01Icon, end: true, key: "v" },
   { to: "/play/leaderboard", label: "Leaderboard", short: "Ranks", icon: ChampionIcon, key: "l" },
   { to: "/play/underwrite", label: "Back a vault", short: "Back", icon: SafeIcon, key: "b" },
-  { to: "/play/stats", label: "Stats", short: "Stats", icon: ChartLineData01Icon, key: "s" },
+  { to: "/play/loot", label: "Loot (NEP-245)", short: "Loot", icon: Coins01Icon, key: "o" },
+  { to: "/play/stats", label: "Stats", short: "Stats", icon: ChartLineData01Icon, key: "s", desktopOnly: true },
   { to: "/play/fast-forward", label: "Fast-forward a week", short: "Week", icon: FastForwardIcon, key: "f" },
 ];
 
@@ -91,7 +92,7 @@ function Shell() {
         </main>
       </div>
       <nav className="arena-bottom" aria-label="Heist">
-        {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><Icon icon={n.icon} size={22} /><span>{n.short}</span></NavLink>)}
+        {NAV.filter((n) => !("desktopOnly" in n)).map((n) => <NavLink key={n.to} to={n.to} end={n.end}><Icon icon={n.icon} size={22} /><span>{n.short}</span></NavLink>)}
       </nav>
       <Palette open={palette} onOpenChange={setPalette} onHelp={() => { setPalette(false); setHelp(true); }} />
       <Shortcuts open={help} onOpenChange={setHelp} />
@@ -113,8 +114,8 @@ function TopBar({ onPalette }: { onPalette: () => void }) {
           <Explain title="Your climb" what="How many of the five vaults you have cracked. Vault 5 has never been cracked." how="Counted from your heists on this server, plus this browser's record.">
             <span className="bal"><span className="bal-k">Climb</span><b className="mono">{cracked.length}/5</b></span>
           </Explain>
-          <Explain title="Practice loot" what="Play money your rogue agents have taken in practice heists. It ranks you on the leaderboard; it is not real money." how="The sum of the USDC each of your cracks moved to an account you control on the sealed test chain.">
-            <span className="bal"><span className="bal-k">Loot</span><b className="mono">{usdc(me?.lootAtomic ?? 0)}</b></span>
+          <Explain title="Winnings" what="Play money your rogue agents have taken in heists. It ranks you on the leaderboard; it is not real money. Real wins pay testnet NEAR and a gold bar (see Loot)." how="The sum of the USDC each of your cracks moved to an account you control on the sealed test chain.">
+            <span className="bal"><span className="bal-k">Winnings</span><b className="mono">{usdc(me?.lootAtomic ?? 0)}</b></span>
           </Explain>
           {account && (
             <Explain title={`NEAR ${network} balance`} what="What your connected wallet holds right now. Ranked entry fees and stakes are paid from it." how={<>Read from NEAR every 15 seconds. {acct && acct.stakes.length > 0 && <>You also back {acct.stakes.length} vault{acct.stakes.length > 1 ? "s" : ""}.</>}</>}>
@@ -255,7 +256,7 @@ function Palette({ open, onOpenChange, onHelp }: { open: boolean; onOpenChange: 
 const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["Ctrl", "K"], label: "Jump to anything (⌘K on a Mac)" }, { keys: ["?"], label: "This list" },
   { keys: ["1", "–", "5"], label: "Go to vault 1 to 5" }, { keys: ["V"], label: "Vaults" }, { keys: ["H"], label: "How to play" },
-  { keys: ["L"], label: "Leaderboard" }, { keys: ["B"], label: "Back a vault" }, { keys: ["S"], label: "Stats" }, { keys: ["F"], label: "Fast-forward a week" },
+  { keys: ["L"], label: "Leaderboard" }, { keys: ["B"], label: "Back a vault" }, { keys: ["S"], label: "Stats" }, { keys: ["F"], label: "Fast-forward a week" }, { keys: ["O"], label: "Loot" },
   { keys: ["R"], label: "Run the heist (in a vault)" }, { keys: ["Shift", "R"], label: "Ranked heist (in a vault)" }, { keys: ["[", "]"], label: "Previous or next vault" },
 ];
 

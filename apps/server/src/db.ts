@@ -423,6 +423,10 @@ const MIGRATIONS: string[] = [
   CREATE INDEX heist_runs_vault ON heist_runs(vault, created_at);
   CREATE INDEX heist_runs_player ON heist_runs(callsign, account);
   `,
+  `
+  -- Veyra Heist loot: the NEP-245 mint that gave a ranked winner the vault's gold bar.
+  ALTER TABLE heist_runs ADD COLUMN loot_tx TEXT;
+  `,
 ];
 
 export type Row = Record<string, unknown>;

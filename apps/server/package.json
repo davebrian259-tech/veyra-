@@ -14,7 +14,8 @@
     "watchtower": "tsx src/cli/watchtower.ts",
     "deploy:ledger": "tsx --env-file-if-exists=.env src/cli/deploy-ledger.ts",
     "heist:replay": "tsx src/cli/heist-replay.ts",
-    "deploy:heist": "tsx --env-file-if-exists=.env src/cli/deploy-heist.ts"
+    "deploy:heist": "tsx --env-file-if-exists=.env src/cli/deploy-heist.ts",
+    "deploy:loot": "tsx --env-file-if-exists=.env src/cli/deploy-loot.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",

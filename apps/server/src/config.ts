@@ -105,6 +105,8 @@ const schema = z.object({
   HEIST_REFEREE_ID: z.string().optional(),
   HEIST_REFEREE_KEY: z.string().optional(),
   /** Practice runs per minute per visitor. */
+  /** The veyra-loot NEP-245 contract; the referee mints a vault's gold bar to each ranked winner. */
+  LOOT_CONTRACT_ID: z.string().optional(),
   HEIST_RATE_PER_MIN: z.coerce.number().int().min(1).default(30),
 
   /** Background monitor interval. */

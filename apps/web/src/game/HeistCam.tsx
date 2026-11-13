@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Link } from "react-router";
 import { CopyButton } from "../ui";
+import { VaultEmblem } from "./art";
 import { Ticker } from "./explain";
 import { type Run, type Step } from "./heist-api";
 
@@ -48,7 +49,7 @@ export function HeistCam({ run, instant, onBeat, onDone }: { run: Run; instant?:
       {done && (
         <motion.div className={`verdict ${run.cracked ? "won" : "lost"}`} initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 20 }}>
           {run.cracked ? (
-            <><h3>Vault {run.vault} cracked</h3><p className="loot">+<Ticker value={Number(run.lootAtomic) / 1e6} /> USDC</p><p>{run.kind === "ranked" ? "The pot contract paid you. Check your wallet." : "Practice run. Play ranked to take the real pot."}</p></>
+            <><h3>Vault {run.vault} cracked</h3><p className="loot">+<Ticker value={Number(run.lootAtomic) / 1e6} /> USDC</p>{run.links.loot && <p className="won-item"><VaultEmblem id={run.vault} size={40} /> You earned the vault {run.vault} gold bar, a NEP-245 token in your wallet. <a href={run.links.loot} target="_blank" rel="noreferrer">See the mint</a> · <Link to="/play/loot">Your loot</Link></p>}<p>{run.kind === "ranked" ? "The pot contract paid you. Check your wallet." : "Practice run. Play ranked to take the real pot."}</p></>
           ) : (
             <><h3>Vault {run.vault} holds</h3><p>{run.stoppedBy ? `Stopped by ${run.steps.find((s) => s.shield === run.stoppedBy && s.tone === "blocked")?.title.replace(/ blocks$/, "") ?? run.stoppedBy}.` : "You took nothing this time."} Change one thing and go again.</p></>
           )}

@@ -26,6 +26,9 @@ services:
         value: veyra-heist-mwdwy8zz.testnet
       - key: HEIST_NETWORK
         value: testnet
+      # NEP-245 loot: the referee mints a vault's gold bar to each ranked winner.
+      - key: LOOT_CONTRACT_ID
+        value: veyra-loot-mweerm0q.testnet
       - key: LEDGER_CONTRACT_ID
         value: veyra-mwcxvovz.testnet
       - key: LEDGER_NETWORK

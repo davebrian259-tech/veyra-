@@ -10,7 +10,7 @@ pot. Crack a vault and the contract pays you the whole pot.
 
 **Tracks:** Games With Real Economies (primary) · AI Security & Defense · Agent Economy
 **For judges:** [docs/HACKATHON.md](docs/HACKATHON.md) has the game loop on paper, the economy, and a checklist against the track brief.
-**Network:** NEAR testnet · pot contract [`veyra-heist-mwdwy8zz.testnet`](https://testnet.nearblocks.io/address/veyra-heist-mwdwy8zz.testnet)
+**Network:** NEAR testnet · pot contract [`veyra-heist-mwdwy8zz.testnet`](https://testnet.nearblocks.io/address/veyra-heist-mwdwy8zz.testnet) · loot (NEP-245) [`veyra-loot-mweerm0q.testnet`](https://testnet.nearblocks.io/address/veyra-loot-mweerm0q.testnet)
 
 ![The Veyra Heist lobby: your next target, the five vaults with live pots, objectives and live heists](docs/ux-audit/after/lobby-desktop.png)
 
@@ -98,6 +98,7 @@ The table every move produces. `apps/server/test/heist.test.ts` enforces it on e
 | **How to play** (`/play/learn`) | The rules and the economy in plain words, a money-flow diagram, live fees and pots, the risks, every shield and every move. |
 | **Leaderboard** (`/play/leaderboard`) | Filters, search, a podium, and your own rank pinned at the top. |
 | **Back a vault** (`/play/underwrite`) | Stake on a vault, see your stake and earnings from the contract, withdraw. |
+| **Loot** (`/play/loot`) | Your gold bars: NEP-245 items minted to each ranked winner, read from the chain, and sent to anyone with `mt_transfer`. |
 | **Fast-forward** (`/play/fast-forward`) | A week of the town's economy in a minute: NPC crews, backers and the house, each with a wallet, following the rules in [`economy.ts`](apps/server/src/heist/economy.ts). Every decision says why. |
 | **Stats** (`/play/stats`) | Pots by vault, heists per day, crack rate by vault, what stops heists, your loot over time. Each chart has a table view. |
 | **One heist** (`/play/runs/:id`) | A shareable replay with its proof: spec hash, outcome hash, entry and settlement transactions. |
@@ -145,6 +146,22 @@ You ──────────────────▶ Heist contract ─
 - **Testnet NEAR** has no market value and is free from the faucet. Every transaction is still
   real and public on NEAR.
 
+## The loot contract (NEP-245)
+
+`contracts/loot`, deployed at `veyra-loot-mweerm0q.testnet`. One contract holds every item type.
+Each vault has a gold bar (`bar-1` to `bar-5`), and the referee mints a vault's bar to whoever
+cracks it in a ranked heist.
+
+| Method | Kind | What it does |
+|---|---|---|
+| `mt_transfer`, `mt_batch_transfer` | change, 1 yocto | Send items to any account. |
+| `mt_transfer_call`, `mt_batch_transfer_call` | change, 1 yocto | Send items to a contract, which keeps what it uses; the rest comes back (or all of it, if the receiver fails). |
+| `mt_mint` | change, minter only | The referee mints a bar to a ranked winner. Emits `mt_mint`. |
+| `mt_balance_of`, `mt_batch_balance_of`, `mt_supply`, `mt_batch_supply`, `mt_token` | view | NEP-245 core views. |
+| `mt_metadata_contract`, `mt_metadata_token_all`, `items` | view | Names, descriptions and art for every item. |
+
+Deploy your own with `pnpm --filter @veyra/server deploy:loot`.
+
 ## The pot contract
 
 `contracts/heist` (near-sdk 5.30), deployed at `veyra-heist-mwdwy8zz.testnet`.
@@ -181,6 +198,7 @@ pnpm --filter @veyra/server heist:replay <run-id> <server-url>
 
 | Need | NEAR technology | Where |
 |---|---|---|
+| Game items | **NEP-245 multi token**: `veyra-loot` holds every item type (a gold bar per vault) in one contract, minted to ranked winners, sent between players | `contracts/loot/` |
 | Hold the pots and pay winners | **`veyra-heist` contract**: payable entries with commit hashes, referee settlement, staking with reward-debt accounting, reclaim | `contracts/heist/` |
 | Player wallets | **NEAR Wallet Selector** (Meteor, MyNearWallet, HERE) on testnet | `apps/web/src/wallet.ts` |
 | Live pots, balances, stakes and tx status | **NEAR RPC** views and `tx` status, polled by the game | `apps/server/src/heist/service.ts` |
@@ -238,7 +256,8 @@ GUARD, cheques and receipts.
 cd contracts && cargo test
 ```
 
-The pot contract (fees, settlement, splits, staking, reclaim, access control) and the ledger.
+The pot contract (fees, settlement, splits, staking, reclaim, access control), the NEP-245 loot
+contract (mint, transfer, batch, transfer-and-call refunds, events), and the ledger.
 
 ```bash
 pnpm --filter @veyra/web e2e
