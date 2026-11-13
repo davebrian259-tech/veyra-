@@ -452,3 +452,9 @@ button.explain.shield-explain:hover .shield-token { border-color: var(--line-2);
   .mini-stats.four { grid-template-columns: repeat(2, 1fr); }
   .arena-bottom { grid-template-columns: repeat(5, 1fr); }
 }
+
+/* vault art */
+.vault-art { position: relative; display: inline-grid; place-items: center; flex: none; }
+.vault-art img { width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; }
+.vault-art.is-cracked img { filter: saturate(0.55) brightness(0.8); }
+.crack-stamp { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-10deg); padding: 0.2em 0.7em; border: 2px solid var(--gold); border-radius: 10px; color: var(--gold); background: rgb(14 14 16 / 0.75); font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }

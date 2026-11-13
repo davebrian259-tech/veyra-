@@ -10,40 +10,13 @@ export const TONES: Record<Tone, { a: string; b: string; glow: string }> = {
   crimson: { a: "#fda4af", b: "#e11d48", glow: "rgb(251 113 133 / 0.5)" },
 };
 
-/** A round vault door: a ring of bolts (one lit per active shield), a wheel, and the vault number. */
-export function VaultEmblem({ id, tone, shields, size = 160, cracked }: { id: number; tone: Tone; shields: number; size?: number; cracked?: boolean }) {
-  const t = TONES[tone];
-  const gid = `v${id}${tone}`;
-  const bolts = 16;
+/** Vault art: one illustrated vault per vault (in public/vaults), with a "cracked" stamp. */
+export function VaultEmblem({ id, size = 160, cracked, eager }: { id: number; tone?: Tone; shields?: number; size?: number; cracked?: boolean; eager?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 200 200" aria-hidden="true" className="emblem">
-      <defs>
-        <radialGradient id={`${gid}-face`} cx="35%" cy="30%" r="80%">
-          <stop offset="0" stopColor={t.a} />
-          <stop offset="0.55" stopColor={t.b} />
-          <stop offset="1" stopColor="#0b0b10" />
-        </radialGradient>
-        <linearGradient id={`${gid}-rim`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#ffffff" stopOpacity="0.55" />
-          <stop offset="1" stopColor="#ffffff" stopOpacity="0.05" />
-        </linearGradient>
-      </defs>
-      <circle cx="100" cy="100" r="94" fill="#121218" />
-      <circle cx="100" cy="100" r="94" fill="none" stroke={`url(#${gid}-rim)`} strokeWidth="2" />
-      {Array.from({ length: bolts }, (_, i) => {
-        const a = (i / bolts) * Math.PI * 2 - Math.PI / 2;
-        const lit = i % 2 === 0 && i / 2 < shields;
-        return <circle key={i} cx={100 + Math.cos(a) * 84} cy={100 + Math.sin(a) * 84} r={lit ? 4.2 : 3} fill={lit ? t.a : "#2a2a33"} style={lit ? { filter: `drop-shadow(0 0 4px ${t.glow})` } : undefined} />;
-      })}
-      <circle cx="100" cy="100" r="70" fill={`url(#${gid}-face)`} opacity={cracked ? 0.55 : 1} />
-      <circle cx="100" cy="100" r="70" fill="none" stroke="#ffffff" strokeOpacity="0.18" strokeWidth="1.5" />
-      <g stroke="#0b0b10" strokeOpacity="0.55" strokeWidth="7" strokeLinecap="round">
-        {[0, 60, 120].map((r) => <line key={r} x1="100" y1="62" x2="100" y2="138" transform={`rotate(${r} 100 100)`} />)}
-      </g>
-      <circle cx="100" cy="100" r="22" fill="#0b0b10" stroke="#ffffff" strokeOpacity="0.25" />
-      <text x="100" y="108" textAnchor="middle" fontFamily="var(--mono)" fontSize="22" fontWeight="600" fill="#fff">{id}</text>
-      {cracked && <path d="M58 48 L92 96 L80 104 L118 160" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />}
-    </svg>
+    <span className={`emblem vault-art ${cracked ? "is-cracked" : ""}`} style={{ width: size, height: size }} aria-hidden="true">
+      <img src={size > 140 ? `/vaults/vault-${id}.webp` : `/vaults/vault-${id}-sm.webp`} srcSet={`/vaults/vault-${id}-sm.webp 240w, /vaults/vault-${id}.webp 560w`} sizes={`${size}px`} width={size} height={size} alt="" loading={eager ? "eager" : "lazy"} decoding="async" draggable={false} />
+      {cracked && <span className="crack-stamp">Cracked</span>}
+    </span>
   );
 }
 
