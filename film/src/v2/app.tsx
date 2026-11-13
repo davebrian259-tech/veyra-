@@ -37,8 +37,8 @@ const PAGES = [
   { src: "loot.jpg", url: "/play/loot", label: "Loot · NEP-245", focus: { x: 900, y: 520 } },
 ];
 export const APP_LEN = 168;
-const STEP = 18;
-const START = 22;
+const STEP = 17;
+const START = 30;
 
 function Window({ children, url }: { children: React.ReactNode; url: string }) {
   return (
@@ -46,6 +46,7 @@ function Window({ children, url }: { children: React.ReactNode; url: string }) {
       <div style={{ height: 56, background: "#f1efea", display: "flex", alignItems: "center", gap: 12, padding: "0 22px", borderBottom: "2px solid #e4e1da" }}>
         {["#f87171", "#fbbf24", "#34d399"].map((c) => <span key={c} style={{ width: 16, height: 16, borderRadius: 99, background: c }} />)}
         <div style={{ marginLeft: 24, flex: 1, height: 36, borderRadius: 10, background: "#fff", display: "flex", alignItems: "center", padding: "0 18px", fontFamily: MONO, fontSize: 24, color: W.grey }}>{url}</div>
+        <div style={{ marginLeft: 18, fontFamily: SANS, fontWeight: 650, fontSize: 24, letterSpacing: "0.04em", color: W.grey }}>REAL APP · NEAR TESTNET</div>
       </div>
       <div style={{ position: "absolute", left: 0, top: 56, right: 0, bottom: 0, overflow: "hidden" }}>{children}</div>
     </div>
@@ -63,19 +64,23 @@ export function AppTour() {
     <AbsoluteFill style={{ background: W.pearl }}>
       <div style={{ position: "absolute", inset: 0, opacity: enter, transform: `translateY(${(1 - enter) * 80}px)` }}>
         <Window url={pg.url}>
-          <div style={{ position: "absolute", inset: 0, transform: `translateX(${slide}px)`, opacity: f < START ? 1 : ramp(local, 0, 4) }}>
+          {idx > 0 && local < 6 && (
+            <div style={{ position: "absolute", inset: 0 }}>
+              <Shot src={PAGES[idx - 1]!.src} a={0} b={1} from={{ ...PAGES[idx - 1]!.focus, s: 0.95 }} to={{ ...PAGES[idx - 1]!.focus, s: 0.95 }} cx={810} cy={367} />
+            </div>
+          )}
+          <div style={{ position: "absolute", inset: 0, transform: `translateX(${slide}px)`, opacity: f < START ? 1 : ramp(local, -1, 4) }}>
             <Shot src={pg.src} a={START + idx * STEP} b={START + idx * STEP + STEP + 6} from={{ ...pg.focus, s: 0.86 }} to={{ ...pg.focus, s: 0.95 }} cx={810} cy={367} />
           </div>
         </Window>
       </div>
-      <Big lines={["THE WHOLE GAME.", "[IN YOUR BROWSER.]"]} at={2} out={START - 2} size={110} accent={W.grey} style={{ left: 150, top: 30 }} />
+      <Big lines={["THE WHOLE GAME.", "[IN YOUR BROWSER.]"]} at={2} out={START - 13} size={110} accent={W.grey} style={{ left: 150, top: 30 }} />
       {f >= START && (
         <div key={idx} style={{ position: "absolute", left: 150, top: 70, display: "flex", alignItems: "baseline", gap: 36 }}>
           <div style={{ fontFamily: MONO, fontWeight: 600, fontSize: 56, color: W.tone[idx % 5] }}>{String(idx + 1).padStart(2, "0")}</div>
-          <div style={{ fontFamily: SANS, fontWeight: 780, fontSize: 120, letterSpacing: "-0.045em", color: W.ink, lineHeight: 1, transform: `translateY(${(1 - ramp(local, 0, 6)) * 30}px)`, opacity: ramp(local, 0, 5) }}>{pg.label}</div>
+          <div style={{ fontFamily: SANS, fontWeight: 780, fontSize: 120, letterSpacing: "-0.045em", color: W.ink, lineHeight: 1, transform: `translateY(${(1 - ramp(local, 0, 6)) * 30}px)`, opacity: ramp(local, -1, 4) }}>{pg.label}</div>
         </div>
       )}
-      <Tag at={START} size={46} style={{ right: 150, top: 120 }}>Real app · testnet</Tag>
       <Flash at={0} len={8} />
     </AbsoluteFill>
   );

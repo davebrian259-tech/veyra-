@@ -1,4 +1,4 @@
-import { AbsoluteFill, Freeze } from "remotion";
+import { AbsoluteFill, Sequence } from "remotion";
 import { Finale } from "../v2/acts2";
 import { Big, SANS, W } from "../v2/type";
 
@@ -6,11 +6,11 @@ import { Big, SANS, W } from "../v2/type";
 export function Cover() {
   return (
     <AbsoluteFill style={{ background: W.pearl }}>
-      <Freeze frame={170}><Finale /></Freeze>
-      <AbsoluteFill style={{ background: "linear-gradient(180deg, rgba(245,244,241,0.96) 0%, rgba(245,244,241,0.7) 30%, rgba(245,244,241,0) 55%)" }} />
-      <Freeze frame={60}>
+      <Sequence from={-172}><Finale /></Sequence>
+      <AbsoluteFill style={{ background: "linear-gradient(180deg, rgba(245,244,241,1) 0%, rgba(245,244,241,1) 27%, rgba(245,244,241,0) 40%)" }} />
+      <Sequence from={-60}>
         <Big lines={["ONE AI GUARDS THE MONEY.", "ONE AI [STEALS] IT."]} at={0} size={104} style={{ left: 110, top: 80 }} />
-      </Freeze>
+      </Sequence>
       <div style={{ position: "absolute", right: 110, bottom: 80, fontFamily: SANS, fontWeight: 800, fontSize: 110, letterSpacing: "0.1em", color: W.ink }}>VEYRA</div>
     </AbsoluteFill>
   );
