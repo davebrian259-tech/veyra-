@@ -8,6 +8,7 @@ import {
   Logout01Icon, SafeIcon, Search01Icon, VolumeHighIcon, VolumeOffIcon, Wallet02Icon,
 } from "@hugeicons/core-free-icons";
 import { Icon, Mark } from "../brand";
+import { ThemeToggle } from "../theme";
 import { Button, Skeleton } from "../ui";
 import { PoweredByNear } from "./art";
 import { FAUCET_URL } from "./errors";
@@ -51,14 +52,6 @@ function Shell() {
   const [params] = useSearchParams();
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
-
-  // The arena is a dark room: toasts, sheets and popovers rendered outside it follow suit.
-  useEffect(() => {
-    const el = document.documentElement;
-    const before = el.getAttribute("data-theme");
-    el.setAttribute("data-theme", "dark");
-    return () => { if (before) el.setAttribute("data-theme", before); else el.removeAttribute("data-theme"); };
-  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -133,6 +126,7 @@ function TopBar({ onPalette }: { onPalette: () => void }) {
             <Icon icon={sound ? VolumeHighIcon : VolumeOffIcon} size={18} />
           </button>
         </Tip>
+        <Tip label="Light or dark"><span><ThemeToggle /></span></Tip>
         <Tip label="Jump to anything" keys={["Ctrl", "K"]}>
           <button type="button" className="btn sm palette-btn" onClick={onPalette} data-tour="palette" aria-label="Open the command palette"><Icon icon={Search01Icon} size={16} /><span className="hide-sm">Search</span><Kbd>⌘K</Kbd></button>
         </Tip>

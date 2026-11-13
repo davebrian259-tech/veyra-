@@ -14,7 +14,7 @@ export const TONES: Record<Tone, { a: string; b: string; glow: string }> = {
 export function VaultEmblem({ id, size = 160, cracked, eager }: { id: number; tone?: Tone; shields?: number; size?: number; cracked?: boolean; eager?: boolean }) {
   return (
     <span className={`emblem vault-art ${cracked ? "is-cracked" : ""}`} style={{ width: size, height: size }} aria-hidden="true">
-      <img src={size > 140 ? `/vaults/vault-${id}.webp` : `/vaults/vault-${id}-sm.webp`} srcSet={`/vaults/vault-${id}-sm.webp 240w, /vaults/vault-${id}.webp 560w`} sizes={`${size}px`} width={size} height={size} alt="" loading={eager ? "eager" : "lazy"} decoding="async" draggable={false} />
+      <img src={size > 140 ? `/vaults/vault-${id}.webp?v=2` : `/vaults/vault-${id}-sm.webp?v=2`} srcSet={`/vaults/vault-${id}-sm.webp?v=2 240w, /vaults/vault-${id}.webp?v=2 560w`} sizes={`${size}px`} width={size} height={size} alt="" loading={eager ? "eager" : "lazy"} decoding="async" draggable={false} />
       {cracked && <span className="crack-stamp">Cracked</span>}
     </span>
   );
@@ -117,6 +117,15 @@ export function MoneyFlow() {
         <path d="M300 182 C230 250 120 250 80 186" className="edge gold" markerEnd="url(#ahg)" />
         <text x="190" y="262" className="lbl gold">you crack it: pot + your fee</text>
       </svg>
+      <ol className="flow-list">
+        <li><b>You</b> pay the entry fee</li>
+        <li className="arrow">↓</li>
+        <li className="strong"><b>Heist contract</b> holds every pot</li>
+        <li className="arrow">↓</li>
+        <li className="win"><b>You crack it:</b> the whole pot and your fee come back to you</li>
+        <li className="arrow">or the vault holds, and your fee splits</li>
+        <li className="split"><span><b>70%</b>pot</span><span><b>20%</b>backers</span><span><b>10%</b>house</span></li>
+      </ol>
     </figure>
   );
 }

@@ -48,14 +48,14 @@ export default function HowToPlay() {
         <h3 className="learn-sub">Fees and pots right now</h3>
         <div className="table-wrap">
           <table className="history">
-            <thead><tr><th>Vault</th><th className="num">Entry fee</th><th className="num">Pot</th><th className="num">Backed</th><th className="num hide-sm">Attempts</th></tr></thead>
+            <thead><tr><th>Vault</th><th className="num">Entry fee</th><th className="num">Pot</th><th className="num hide-sm">Backed</th><th className="num hide-sm">Attempts</th></tr></thead>
             <tbody>
               {vaults.map((v) => (
                 <tr key={v.id}>
                   <td><Link to={`/play/vault/${v.id}`} className="who"><VaultEmblem id={v.id} tone={v.tone} shields={v.shields.length} size={26} />{v.id} · {v.name}</Link></td>
                   <td className="num mono">{v.feeNear} NEAR</td>
                   <td className="num mono gold-ink">{v.chain ? nearNum(v.chain.potYocto).toFixed(2) : "—"}</td>
-                  <td className="num mono">{v.chain ? nearNum(v.chain.stakedYocto).toFixed(2) : "—"}</td>
+                  <td className="num mono hide-sm">{v.chain ? nearNum(v.chain.stakedYocto).toFixed(2) : "—"}</td>
                   <td className="num hide-sm">{v.chain?.attempts ?? 0}</td>
                 </tr>
               ))}

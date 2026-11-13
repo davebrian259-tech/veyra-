@@ -3,14 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Veyra · autonomous contractor on NEAR</title>
-    <meta name="description" content="Veyra hires agents on the NEAR AI Agent Market, pays only for verified work, and proves every payment on NEAR." />
-    <meta property="og:title" content="Veyra" />
-    <meta property="og:description" content="Hires agents. Pays on delivery. Proves it on NEAR." />
+    <title>Veyra Heist · rob an AI agent on NEAR</title>
+    <meta name="description" content="Build a rogue agent and rob Veyra, an AI that pays other agents for work. Five vaults, real pots on NEAR, free to practise." />
+    <meta property="og:title" content="Veyra Heist" />
+    <meta property="og:description" content="Veyra holds the pot. Take it." />
     <meta property="og:type" content="website" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#0e0e10" />
+    <!-- Apply the saved theme before first paint (dark unless the visitor chose light). -->
+    <script>try { document.documentElement.setAttribute("data-theme", localStorage.getItem("veyra.theme") === "light" ? "light" : "dark"); } catch (e) { document.documentElement.setAttribute("data-theme", "dark"); }</script>
     <!-- Some wallet SDKs expect Node globals. -->
     <script>window.process = window.process || { env: {}, browser: true, version: "" };</script>
   </head>

@@ -5,12 +5,25 @@ import { ArrowRight01Icon, ArrowUpRight01Icon, CheckmarkCircle02Icon, Github01Ic
 import { api } from "../api";
 import { Icon, Mark, Wordmark } from "../brand";
 import { useSession } from "../shell/session";
+import { ThemeToggle } from "../theme";
 import { MoneyFlow, NearMark, PoweredByNear, RogueAvatar, ShieldToken, TONES, VaultEmblem } from "../game/art";
 import { ALL_SHIELDS, nearNum, type Lobby, type Run } from "../game/heist-api";
 import "../game/game.css";
 import "./landing.css";
 
 const REPO = "https://github.com/davebrian259-tech/veyra-";
+
+/** The NEAR technology behind the game and the agent, each with where it lives. */
+const NEAR_STACK: { k: string; t: string; d: string; href?: string }[] = [
+  { k: "Smart contract", t: "veyra-heist", d: "Holds every pot, takes entries and pays winners. Live on NEAR testnet.", href: "https://testnet.nearblocks.io/address/veyra-heist-mwdwy8zz.testnet" },
+  { k: "Wallets", t: "NEAR Wallet Selector", d: "Play ranked with Meteor, MyNearWallet or HERE. Your keys never leave your wallet." },
+  { k: "Fair play", t: "Commit, then settle", d: "Each entry commits a SHA-256 of your agent. The result's hash is written on-chain." },
+  { k: "Payments", t: "x402 and NEP-366", d: "Veyra pays agents with signed delegate actions that clear only on delivery." },
+  { k: "Marketplace", t: "NEAR AI Agent Market", d: "Where Veyra hires specialist agents, and where other agents hire Veyra." },
+  { k: "Private AI", t: "NEAR AI Cloud", d: "Veyra plans in confidential compute, with the hardware attestation checked." },
+  { k: "Owner limits", t: "NEP-413 mandate", d: "The owner signs Veyra's spending limits once, with a NEAR wallet." },
+  { k: "Proof", t: "veyra-ledger", d: "Every receipt anchored as a Merkle root, plus on-chain fraud reports from Watchtower.", href: "https://testnet.nearblocks.io/address/veyra-mwcxvovz.testnet" },
+];
 
 /** Which move cracks which vault. Verified by the referee's tests on every build. */
 const LADDER: { move: string; what: string; cracks: number[]; stoppedBy?: string }[] = [
@@ -57,10 +70,11 @@ export default function Landing() {
             <a href="#how">How it works</a>
             <a href="#vaults">Vaults</a>
             <a href="#economy">Economy</a>
+            <a href="#near">NEAR</a>
             <a href="#fair">Fair play</a>
             <a href={REPO} target="_blank" rel="noreferrer">GitHub</a>
           </div>
-          <Link className="btn primary" to="/play">Play free</Link>
+          <div className="lp-nav-end"><ThemeToggle /><Link className="btn primary" to="/play">Play free</Link></div>
         </nav>
 
         <header className="lp-hero">
@@ -119,6 +133,23 @@ export default function Landing() {
           </Link>
         </section>
 
+        <section id="near" className="lp-section">
+          <div className="lp-head">
+            <p className="lp-tag"><NearMark size={12} /> Built on NEAR</p>
+            <h2>Every coin moves on NEAR.</h2>
+            <p>The game, the pots and the agent behind them run on NEAR's stack, from the contract that holds your winnings to the market where Veyra hires.</p>
+          </div>
+          <div className="lp-near">
+            {NEAR_STACK.map((n) => (
+              <a key={n.t} className="lp-near-item" href={n.href ?? REPO} target="_blank" rel="noreferrer">
+                <span className="lp-near-k">{n.k}</span>
+                <b>{n.t}</b>
+                <span>{n.d}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+
         <section id="how" className="lp-section">
           <div className="lp-head">
             <h2>One heist, three moves.</h2>
@@ -163,7 +194,7 @@ export default function Landing() {
                 {LADDER.map((m) => (
                   <tr key={m.move}>
                     <td><b>{m.move}</b><span className="small muted"> {m.what}</span></td>
-                    {[1, 2, 3, 4, 5].map((n) => <td key={n} className="num">{m.cracks.includes(n) ? <span className="pill gold">cracked</span> : <span className="small muted">{m.stoppedBy}</span>}</td>)}
+                    {[1, 2, 3, 4, 5].map((n) => <td key={n} className="num">{m.cracks.includes(n) ? <span className="pill gold" aria-label="cracked"><span className="full">cracked</span><span className="short" aria-hidden="true">✓</span></span> : <span className="small muted" aria-label={`stopped by ${m.stoppedBy}`}><span className="full">{m.stoppedBy}</span><span className="short" aria-hidden="true">✕</span></span>}</td>)}
                   </tr>
                 ))}
               </tbody>

@@ -1,7 +1,7 @@
 /* The landing page, in the arena's art direction: dark steel, one lit vault, gold for money. */
 .lp { overflow-x: clip; }
 .lp a { color: inherit; }
-.lp-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-3) var(--gutter); min-height: 68px; background: rgb(14 14 16 / 0.88); backdrop-filter: blur(12px); border-bottom: 1px solid rgb(255 255 255 / 0.04); }
+.lp-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-3) var(--gutter); min-height: 68px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid rgb(255 255 255 / 0.04); }
 .lp-nav .wordmark { color: var(--fg); text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
 .lp-links { display: flex; gap: var(--s-6); font-size: var(--fs-sm); }
 .lp-links a { color: var(--fg-3); text-decoration: none; min-height: var(--tap); display: inline-flex; align-items: center; }
@@ -84,7 +84,7 @@
 .lp-proof li { display: inline-flex; align-items: center; gap: 6px; }
 .lp-proof svg { color: var(--good); }
 .lp-floaters { position: absolute; inset: 0; pointer-events: none; }
-.lp-float { position: absolute; display: grid; place-items: center; width: 116px; height: 116px; border-radius: 28px; background: #161619; border: 1px solid var(--line-2); box-shadow: 0 30px 60px -30px rgb(0 0 0 / 0.9); animation: bob 6s ease-in-out infinite; }
+.lp-float { position: absolute; display: grid; place-items: center; width: 116px; height: 116px; border-radius: 28px; background: var(--bg-2); border: 1px solid var(--line-2); box-shadow: 0 30px 60px -30px rgb(0 0 0 / 0.9); animation: bob 6s ease-in-out infinite; }
 .lp-float.f1 { left: 4%; top: 22%; transform: rotate(-8deg); }
 .lp-float.f2 { right: 6%; top: 14%; transform: rotate(7deg); animation-delay: -1.5s; }
 .lp-float.f3 { left: 10%; bottom: 8%; transform: rotate(6deg); animation-delay: -3s; }
@@ -118,11 +118,11 @@
 .lp-tile p { font-size: var(--fs-sm); max-width: 30ch; }
 .lp-tile .vault-art { position: absolute; right: -18px; bottom: -22px; }
 .lp-chip { align-self: flex-start; padding: 3px 10px; border-radius: 8px; border: 1.5px solid currentColor; font-size: 12px; font-weight: 600; margin-bottom: var(--s-3); }
-.lp-tile.dark { background: #161619; border: 1px solid var(--line); color: var(--fg); }
-.lp-tile.dark p { color: var(--fg-3); }
+.lp-tile.dark { background: #161619; border: 1px solid #232327; color: #f2f2f5; }
+.lp-tile.dark p { color: #9a9aa6; }
 .lp-tile.light { background: #e9e9ee; color: #0e0e10; }
 .lp-tile.light p { color: #3e3e45; }
-.lp-tile.gold { background: var(--gold); color: #0e0e10; }
+.lp-tile.gold { background: #f5c451; color: #0e0e10; }
 .lp-tile.gold p { color: #3a2f12; }
 
 @media (max-width: 1100px) {
@@ -138,13 +138,50 @@
   .lp-tile .vault-art { width: 150px !important; height: 150px !important; right: -6px; bottom: -14px; }
   .lp-bento { grid-template-columns: 1fr; }
   .lp-tile { min-height: 240px; }
-  .lp-fan { justify-content: flex-start; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: var(--s-4); gap: var(--s-3); scrollbar-width: none; }
-  .lp-card, .lp-card.pos2 { flex: 0 0 72%; margin: 0; transform: none; scroll-snap-align: center; }
-  .lp-card a, .lp-card.pos2 a { height: 300px; }
-  .lp-card .vault-art, .lp-card.pos2 .vault-art { width: 190px !important; height: 190px !important; }
-  .lp-card.pos2 { order: -1; }
+  /* phones and tablets: Veyra on top, the other four in a 2 by 2 grid. Nothing scrolls sideways. */
+  .lp-fan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); padding-top: var(--s-4); }
+  .lp-card, .lp-card.pos2 { margin: 0; transform: none !important; }
+  .lp-card.pos2 { grid-column: 1 / -1; order: -1; }
+  .lp-card a, .lp-card.pos2 a { height: auto; aspect-ratio: 4 / 5; padding: var(--s-3); border-radius: 24px; }
+  .lp-card.pos2 a { aspect-ratio: 16 / 10; }
+  .lp-card .vault-art { width: 82% !important; height: auto !important; aspect-ratio: 1; margin-bottom: -10%; }
+  .lp-card.pos2 .vault-art { width: 52% !important; margin-bottom: -6%; }
+  .lp-card-top b { font-size: var(--fs-md); }
+  .lp-card.pos2 .lp-card-top b { font-size: var(--fs-xl); }
+  .lp-badge { font-size: 11px; padding: 3px 8px; }
 }
 @media (max-width: 520px) {
   .lp-hero .cta-row .btn { flex: 1 1 100%; justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) { .lp-float { animation: none; } }
+
+.lp-nav-end { display: flex; align-items: center; gap: var(--s-2); }
+:root[data-theme="light"] .lp-tile.light { background: #ffffff; border: 1px solid var(--line-2); }
+:root[data-theme="light"] .lp-hero h1 span { color: #b07d0b; }
+
+/* NEAR stack */
+.lp-near { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3); }
+.lp-near-item { display: grid; align-content: start; gap: 6px; padding: var(--s-5); border-radius: 22px; background: var(--panel); border: 1px solid var(--line); text-decoration: none; min-width: 0; transition: border-color var(--t-med), transform var(--t-med) var(--ease); }
+.lp-near-item:hover { border-color: var(--line-2); transform: translateY(-2px); }
+.lp-near-k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); }
+.lp-near-item b { font-size: var(--fs-lg); letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.lp-near-item > span:last-child { font-size: var(--fs-sm); color: var(--fg-3); line-height: 1.5; }
+.lp-head .lp-tag { margin-bottom: var(--s-3); }
+
+/* the move ladder fits a phone: short marks instead of words */
+.lp-ladder .short { display: none; }
+@media (max-width: 1100px) { .lp-near { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .lp-ladder { overflow: visible; }
+  .lp-ladder table { table-layout: fixed; width: 100%; }
+  .lp-ladder td:first-child, .lp-ladder th:first-child { min-width: 0; width: 42%; }
+  .lp-ladder td:first-child .small { display: none; }
+  .lp-ladder .full { display: none; }
+  .lp-ladder .short { display: inline; }
+  .lp-ladder td, .lp-ladder th { padding-left: 4px; padding-right: 4px; text-align: center; }
+  .lp-ladder td:first-child, .lp-ladder th:first-child { text-align: left; }
+  .lp-ladder .pill { padding: 2px 8px; }
+  .lp-near { grid-template-columns: 1fr; }
+  .lp-steps li { padding: var(--s-4); }
+  .lp-fair { padding: var(--s-5); }
+}
