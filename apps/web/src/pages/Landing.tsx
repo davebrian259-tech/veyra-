@@ -67,17 +67,17 @@ export default function Landing() {
           <div className="lp-floaters" aria-hidden="true">
             {[1, 2, 3, 4].map((id) => <span key={id} className={`lp-float f${id}`}><VaultEmblem id={id} size={96} eager /></span>)}
           </div>
-          <p className="lp-tag"><NearMark size={12} /> A game with real pots on NEAR</p>
+          <p className="lp-tag">Five vaults. One very careful AI.</p>
           <h1>Veyra holds the pot.<br /><span>Take it.</span></h1>
-          <p className="lp-lede">Build a rogue agent and rob an AI that pays agents for work. Five vaults, each guarded by more of its real defences.</p>
+          <p className="lp-lede">Veyra pays other AI agents for their work. Your job is to make it overpay. Build a rogue agent, find the gap in its defences, and walk out with the pot.</p>
           <div className="cta-row center">
             <Link className="btn primary big lp-play" to="/play">Play free <Icon icon={ArrowRight01Icon} size={18} /></Link>
             <Link className="btn big" to="/play/learn">How to play</Link>
           </div>
           <ul className="lp-proof">
-            <li><Icon icon={CheckmarkCircle02Icon} size={16} /> No wallet to practise</li>
-            <li><Icon icon={CheckmarkCircle02Icon} size={16} /> Testnet NEAR is free</li>
-            <li><Icon icon={CheckmarkCircle02Icon} size={16} /> Every heist can be replayed</li>
+            <li><Icon icon={CheckmarkCircle02Icon} size={16} /> Free to practise</li>
+            <li><Icon icon={CheckmarkCircle02Icon} size={16} /> No wallet to start</li>
+            <li><Icon icon={CheckmarkCircle02Icon} size={16} /> Every heist on the record</li>
           </ul>
         </header>
 
@@ -100,21 +100,21 @@ export default function Landing() {
 
         <section className="lp-bento" aria-label="Ways to play">
           <Link to="/play/vault/1?move=redirect" className="lp-tile dark">
-            <span className="lp-chip">Practice</span>
-            <h2>Crack vault 1 in a minute</h2>
-            <p>Free, instant, no wallet. One move gets you in.</p>
+            <span className="lp-chip">Your first job</span>
+            <h2>Vault 1 forgot to check who it pays</h2>
+            <p>Show it why that matters. It takes about a minute, and it costs nothing.</p>
             <VaultEmblem id={1} size={170} />
           </Link>
           <Link to="/play/learn" className="lp-tile light">
-            <span className="lp-chip">Real pots</span>
-            <h2>{heist?.ranked.enabled ? <><span className="mono">{totalPot.toFixed(2)}</span> NEAR up for grabs</> : "Real pots on NEAR"}</h2>
-            <p>Ranked heists pay a small testnet fee. Crack the vault and the contract pays you the pot.</p>
+            <span className="lp-chip">The prize</span>
+            <h2>{heist?.ranked.enabled ? <><span className="mono">{totalPot.toFixed(2)}</span> NEAR is waiting inside</> : "Real money sits inside"}</h2>
+            <p>Pay a small entry fee and beat the vault. The contract hands you everything in it.</p>
             <VaultEmblem id={2} size={170} />
           </Link>
           <Link to="/play/underwrite" className="lp-tile gold">
-            <span className="lp-chip">Back a vault</span>
-            <h2>Bet on the defence</h2>
-            <p>Stake on a vault holding and earn from every failed heist.</p>
+            <span className="lp-chip">The other side</span>
+            <h2>Rather guard than rob?</h2>
+            <p>Back a vault you trust. Every failed heist pays you a cut. Every crack costs you the stake.</p>
             <VaultEmblem id={4} size={170} />
           </Link>
         </section>
