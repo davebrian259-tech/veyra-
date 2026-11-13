@@ -38,7 +38,8 @@ export class HeistService {
   constructor(private readonly db: Db, private readonly receipts: ReceiptService, private readonly config: Config, fetcher?: typeof fetch) {
     this.network = config.HEIST_NETWORK;
     this.contractId = config.HEIST_CONTRACT_ID ?? null;
-    this.lootContractId = config.LOOT_CONTRACT_ID ?? null;
+    // the public testnet deployment pairs these two contracts, so the pot contract implies its loot contract
+    this.lootContractId = config.LOOT_CONTRACT_ID ?? (this.contractId === "veyra-heist-mwdwy8zz.testnet" ? "veyra-loot-mweerm0q.testnet" : null);
     this.rpc = new NearRpc(this.network === "mainnet" ? config.NEAR_MAINNET_RPC_URL : "https://rpc.testnet.near.org", fetcher);
     const id = config.HEIST_REFEREE_ID ?? config.LEDGER_WRITER_ID;
     const key = config.HEIST_REFEREE_KEY ?? config.LEDGER_WRITER_KEY;
