@@ -4,10 +4,11 @@ import cues from "./cues.json";
 import { Finish } from "./ui/kit";
 import { Five, Heist, Question } from "./v2/acts1";
 import { Economy, Escalate, Finale } from "./v2/acts2";
+import { AppTour } from "./v2/app";
 import { W } from "./v2/type";
 
 const S = cues.scenes as unknown as Record<string, [number, number]>;
-const SCENES: [string, () => React.ReactElement][] = [["question", Question], ["five", Five], ["heist", Heist], ["escalate", Escalate], ["economy", Economy], ["finale", Finale]];
+const SCENES: [string, () => React.ReactElement][] = [["question", Question], ["five", Five], ["heist", Heist], ["escalate", Escalate], ["economy", Economy], ["app", AppTour], ["finale", Finale]];
 
 /** VEYRA: "one AI guards the money, another hunts it". Cuts land on the beat (96 BPM = 15 frames). */
 export function Film() {

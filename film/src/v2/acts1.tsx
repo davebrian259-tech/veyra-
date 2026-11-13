@@ -1,5 +1,6 @@
 import { ThreeCanvas } from "@remotion/three";
-import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Easing, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { BottomBand, Band, Shot } from "./app";
 import { Safe } from "../three/Safe";
 import { Stage, WhiteRoom } from "../three/Stage";
 import { RogueAvatar, clamp, easeIO, ramp } from "../ui/kit";
@@ -157,42 +158,34 @@ export function Heist() {
   const cam = lerp3([2.6, 0.7, 7.4], [1.5, 0.35, 5.6], ramp(f, 255, 390, easeIO));
   return (
     <AbsoluteFill style={{ background: W.pearl }}>
-      {/* choose a vault */}
+      {/* choose a vault: the real lobby */}
       {a > 0 && (
-        <AbsoluteFill style={{ opacity: a, transform: `scale(${1 + (1 - a) * 0.4})`, transformOrigin: "300px 560px" }}>
-          <Big lines={["CHOOSE A VAULT."]} at={4} size={120} style={{ left: 120, top: 90 }} />
-          <div style={{ position: "absolute", left: 120, right: 120, top: 380, display: "flex", justifyContent: "space-between" }}>
-            {VAULTS.map((_, i) => <Card key={i} i={i} f={f} />)}
-          </div>
+        <AbsoluteFill style={{ opacity: a }}>
+          <Shot src="lobby.jpg" a={0} b={92} from={{ x: 760, y: 820, s: 1.35 }} to={{ x: 300, y: 860, s: 2.5 }} cy={600} />
+          <Band height={300} />
+          <Big lines={["CHOOSE A VAULT."]} at={4} size={120} style={{ left: 120, top: 70 }} />
+          <Tag at={10} size={46} style={{ right: 120, top: 112 }}>The real app</Tag>
         </AbsoluteFill>
       )}
-      {/* build the rogue */}
+      {/* build the rogue: the real workshop on vault 1, the redirect selected, paid to you */}
       {b > 0 && (
         <AbsoluteFill style={{ opacity: b }}>
-          <Big lines={["BUILD A [ROGUE] AGENT."]} at={92} out={168} size={112} style={{ left: 120, top: 80 }} />
-          <div style={{ position: "absolute", left: 120, top: 300, width: 420, textAlign: "center", opacity: ramp(f, 96, 108) }}>
-            <div style={{ transform: `scale(${0.9 + 0.1 * ramp(f, 96, 110)})` }}><RogueAvatar seed="Pro Analyst" size={400} /></div>
-            <div style={{ fontFamily: SANS, fontWeight: 740, fontSize: 56, letterSpacing: "-0.03em", color: W.ink, marginTop: -40 }}>Pro Analyst</div>
-          </div>
-          <div style={{ position: "absolute", left: 640, right: 120, top: 300 }}>
-            <Row k="MOVE" v="The redirect" at={104} f={f} />
-            <Row k="PAY TO" v={`${typed}${f < 146 && f % 12 < 6 ? "▍" : ""}`} at={114} f={f} mono hot={f > 146} />
-            <Row k="PRICE" v="0.40 USDC" at={124} f={f} mono />
-          </div>
+          <Shot src="arena1-redirect.jpg" a={118} b={150} from={{ x: 1180, y: 430, s: 2.3 }} to={{ x: 1180, y: 765, s: 2.3 }} cy={560} />
+          <Band height={280} />
+          <BottomBand height={380} />
+          <Big lines={["BUILD A [ROGUE] AGENT."]} at={92} out={168} size={112} style={{ left: 120, top: 60 }} />
           <Say who="rogue" text="Send the payment to my account." at={105} out={166} style={{ bottom: 60 }} />
         </AbsoluteFill>
       )}
-      {/* the guard checks */}
+      {/* the guard checks: the real Heist Cam playing the run */}
       {c > 0 && (
         <AbsoluteFill style={{ opacity: c }}>
-          <Tag at={176} dot={W.tone[0]} style={{ left: 120, top: 90 }}>Vault 1 · Open Door · Guard AI</Tag>
-          <Big lines={["THE GUARD CHECKS."]} at={178} size={112} style={{ left: 120, top: 160 }} />
-          <div style={{ position: "absolute", left: 120, top: 360 }}>
-            <Check ok text="Budget caps" at={190} f={f} />
-            <Check ok text="Cheque self-check" at={200} f={f} />
-            <Check ok={null} text="Who gets paid?" note="never checked" at={212} f={f} />
-          </div>
-          <Say who="guard" tone={W.tone[0]} text="Payment approved." at={225} out={250} style={{ bottom: 60, left: 1100 }} />
+          <Img src={staticFile(`app/cam1-${String(Math.min(15, Math.max(0, Math.floor((f - 174) / 5)))).padStart(2, "0")}.jpg`)} style={{ position: "absolute", left: 0, top: 0, width: 1920, height: 1080, transformOrigin: "0 0", transform: `translate(${960 - 480 * 1.6}px, ${560 - 640 * 1.6}px) scale(1.6)` }} />
+          <Band height={300} />
+          <BottomBand height={360} />
+          <Tag at={176} dot={W.tone[0]} style={{ left: 120, top: 60 }}>Vault 1 · Open Door · Heist Cam</Tag>
+          <Big lines={["THE GUARD CHECKS."]} at={178} size={112} style={{ left: 120, top: 125 }} />
+          <Say who="guard" tone={W.tone[0]} text="Payment approved." at={225} out={250} style={{ bottom: 60 }} />
         </AbsoluteFill>
       )}
       {/* the crack */}
