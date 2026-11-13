@@ -30,6 +30,17 @@ async function signAndSend(txs: WalletTx[]) {
   return hashes;
 }
 
+/** Sends a call from the test account directly (no page), e.g. to put house money back in a pot. */
+export async function callFromTestAccount(contractId: string, method: string, args: object, depositYocto: bigint) {
+  return signAndSend([{ receiverId: contractId, actions: [{ type: "FunctionCall", params: { methodName: method, args, gas: "30000000000000", deposit: depositYocto.toString() } }] }]);
+}
+
+/** The test account's balance in yoctoNEAR. */
+export async function testAccountBalance() {
+  const { NearRpc } = await import("../../server/src/lib/near-rpc.ts");
+  return BigInt((await new NearRpc("https://rpc.testnet.near.org").viewAccount(e2eAccount)).amount);
+}
+
 /** Installs the bridge. `reject` makes every signature fail the way a cancelled wallet does. */
 export async function installWallet(page: Page, opts: { accountId?: string; reject?: boolean } = {}) {
   const accountId = opts.accountId ?? e2eAccount;

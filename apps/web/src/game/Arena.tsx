@@ -164,7 +164,7 @@ export default function Arena() {
             <div className="fighter">
               <motion.div animate={flash ? { scale: [1, 1.06, 1] } : {}} transition={{ duration: 0.4 }}><VaultEmblem id={vault.id} tone={vault.tone} shields={vault.shields.length} size={150} cracked={run?.cracked} /></motion.div>
               <b id="vault-title">{vault.name}</b>
-              {ranked.enabled && vault.chain ? (
+              {vault.chain ? (
                 <Explain title={`Vault ${vault.id} pot`} what="Real testnet NEAR in the Heist contract. A ranked crack pays all of it, plus your fee back, to your wallet." how={<>House seed + 70% of each failed entry fee + backers' stakes ({nearNum(vault.chain.stakedYocto).toFixed(2)} NEAR). {vault.chain.attempts} ranked attempts, {vault.chain.cracks} cracks so far.</>}>
                   <small className="gold-ink mono">{nearNum(vault.chain.potYocto).toFixed(2)} NEAR pot</small>
                 </Explain>

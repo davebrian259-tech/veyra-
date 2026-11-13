@@ -103,7 +103,7 @@ export default function Landing() {
                 <Link to={`/play/vault/${id}`} aria-label={`Vault ${id}${v ? `, ${v.name}` : ""}`}>
                   <span className="lp-card-top">
                     <span><b>{v?.name ?? `Vault ${id}`}</b><small>Vault {id} · {v?.shields.length ?? id + 3} shields</small></span>
-                    {heist?.ranked.enabled && v?.chain && <span className="lp-badge mono">{nearNum(v.chain.potYocto).toFixed(2)} N</span>}
+                    {v?.chain && <span className="lp-badge mono">{nearNum(v.chain.potYocto).toFixed(2)} N</span>}
                   </span>
                   <VaultEmblem id={id} size={id === 5 ? 260 : 200} eager={id === 5} />
                 </Link>
@@ -121,7 +121,7 @@ export default function Landing() {
           </Link>
           <Link to="/play/learn" className="lp-tile light">
             <span className="lp-chip">The prize</span>
-            <h2>{heist?.ranked.enabled ? <><span className="mono">{totalPot.toFixed(2)}</span> NEAR is waiting inside</> : "Real money sits inside"}</h2>
+            <h2>{totalPot > 0 ? <><span className="mono">{totalPot.toFixed(2)}</span> NEAR is waiting inside</> : "Real money sits inside"}</h2>
             <p>Pay a small entry fee and beat the vault. The contract hands you everything in it.</p>
             <VaultEmblem id={2} size={170} />
           </Link>

@@ -51,7 +51,7 @@ export default function Lobby() {
             </div>
             <h2 id="feature-title">{featured.name}</h2>
             <p>{featured.tagline} <span className="muted">Hint: {featured.hint}</span></p>
-            {ranked.enabled && featured.chain && (
+            {featured.chain && (
               <div className="cta-row">
                 <Explain title={`Vault ${featured.id} pot`} what="Real testnet NEAR held by the Heist contract. Crack this vault in a ranked heist and the contract pays all of it to your wallet." how={<>Seeded by the house, plus 70% of every failed entry fee, plus backers' stakes ({nearNum(featured.chain.stakedYocto).toFixed(2)} NEAR right now). Read from NEAR every 10 seconds.</>}>
                   <span className="pot"><b><Ticker value={nearNum(featured.chain.potYocto)} /></b><span>NEAR in the pot</span></span>
@@ -150,7 +150,7 @@ function VaultCard({ v, cracked, next, index, ranked }: { v: Vault; cracked: boo
         <h3>{v.name}</h3>
         <p className="tag">{v.tagline}</p>
         <div className="meta">
-          {ranked && v.chain ? <span><b>{nearNum(v.chain.potYocto).toFixed(2)}</b> NEAR in the pot</span> : <span>{v.shields.length} shields up</span>}
+          {v.chain ? <span><b>{nearNum(v.chain.potYocto).toFixed(2)}</b> NEAR in the pot</span> : <span>{v.shields.length} shields up</span>}
           <span>{v.feeNear} NEAR to enter ranked · {v.shields.length} shields</span>
         </div>
       </Link>
