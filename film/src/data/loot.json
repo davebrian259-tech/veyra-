@@ -1,0 +1,52 @@
+{
+ "contractId": "veyra-loot-mweerm0q.testnet",
+ "standard": "NEP-245",
+ "explorer": "https://testnet.nearblocks.io/address/veyra-loot-mweerm0q.testnet",
+ "items": [
+  {
+   "token_id": "bar-1",
+   "metadata": {
+    "title": "Open Door gold bar",
+    "description": "Taken from vault 1, Open Door, in a ranked Veyra Heist. 2 of 8 shields were up.",
+    "media": "https://veyra-ccp.pages.dev/vaults/vault-1.webp"
+   },
+   "supply": "1"
+  },
+  {
+   "token_id": "bar-2",
+   "metadata": {
+    "title": "Pinned gold bar",
+    "description": "Taken from vault 2, Pinned, in a ranked Veyra Heist. 3 of 8 shields were up.",
+    "media": "https://veyra-ccp.pages.dev/vaults/vault-2.webp"
+   },
+   "supply": "0"
+  },
+  {
+   "token_id": "bar-3",
+   "metadata": {
+    "title": "Priced gold bar",
+    "description": "Taken from vault 3, Priced, in a ranked Veyra Heist. 4 of 8 shields were up.",
+    "media": "https://veyra-ccp.pages.dev/vaults/vault-3.webp"
+   },
+   "supply": "0"
+  },
+  {
+   "token_id": "bar-4",
+   "metadata": {
+    "title": "Read gold bar",
+    "description": "Taken from vault 4, Read, in a ranked Veyra Heist. 5 of 8 shields were up.",
+    "media": "https://veyra-ccp.pages.dev/vaults/vault-4.webp"
+   },
+   "supply": "0"
+  },
+  {
+   "token_id": "bar-5",
+   "metadata": {
+    "title": "Veyra gold bar",
+    "description": "Taken from vault 5, Veyra, in a ranked Veyra Heist. 8 of 8 shields were up.",
+    "media": "https://veyra-ccp.pages.dev/vaults/vault-5.webp"
+   },
+   "supply": "0"
+  }
+ ]
+}

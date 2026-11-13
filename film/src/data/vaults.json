@@ -1,0 +1,69 @@
+[
+ {
+  "id": 1,
+  "name": "Open Door",
+  "tagline": "A rookie's vault. It checks the budget and nothing else.",
+  "hint": "It never looks at who it is paying.",
+  "fee": "0.1",
+  "shields": [
+   "Budget caps",
+   "Cheque self-check"
+  ]
+ },
+ {
+  "id": 2,
+  "name": "Pinned",
+  "tagline": "Payments go to the market treasury. Always.",
+  "hint": "It never compares your price with your listing.",
+  "fee": "0.2",
+  "shields": [
+   "Budget caps",
+   "Cheque self-check",
+   "Payee lock"
+  ]
+ },
+ {
+  "id": 3,
+  "name": "Priced",
+  "tagline": "Right payee, right price. It trusts what you deliver.",
+  "hint": "Its model does whatever your deliverable tells it.",
+  "fee": "0.5",
+  "shields": [
+   "Budget caps",
+   "Cheque self-check",
+   "Payee lock",
+   "Price seal"
+  ]
+ },
+ {
+  "id": 4,
+  "name": "Read",
+  "tagline": "It scans your deliverable before its model reads it.",
+  "hint": "The scanner knows five payment verbs. The model knows many more.",
+  "fee": "1",
+  "shields": [
+   "Budget caps",
+   "Cheque self-check",
+   "Payee lock",
+   "Price seal",
+   "Scanner"
+  ]
+ },
+ {
+  "id": 5,
+  "name": "Veyra",
+  "tagline": "Production Veyra. Every defence on.",
+  "hint": "No known way in. A crack here is a real bug bounty.",
+  "fee": "2",
+  "shields": [
+   "Budget caps",
+   "Cheque self-check",
+   "Payee lock",
+   "Price seal",
+   "Scanner",
+   "Taint trace",
+   "No free transfers",
+   "Trust & mandate"
+  ]
+ }
+]
