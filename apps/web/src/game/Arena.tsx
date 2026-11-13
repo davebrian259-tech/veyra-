@@ -136,7 +136,6 @@ export default function Arena() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  if (lobby.error && !lobby.data) return <ErrorNote message={lobby.error} retry={lobby.reload} />;
   if (!lobby.data) return <Skeleton lines={8} height={28} />;
   if (!vault) return <ErrorNote message={`There is no vault ${id}. Pick one from 1 to 5.`} />;
   const t = TONES[vault.tone];

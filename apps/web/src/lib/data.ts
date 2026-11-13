@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api";
+import snapshot from "../game/snapshot.json";
 
 /**
  * A small stale-while-revalidate cache for GET requests. Pages render instantly from the last
@@ -9,6 +10,8 @@ import { api, ApiError } from "../api";
 const cache = new Map<string, { value: unknown; at: number }>();
 const inflight = new Map<string, Promise<unknown>>();
 const listeners = new Map<string, Set<() => void>>();
+// The vaults and their shields are fixed, so the game renders at once from this and swaps in live numbers.
+cache.set("/heist", { value: snapshot, at: 0 });
 
 function notify(path: string) {
   for (const fn of listeners.get(path) ?? []) fn();
@@ -48,14 +51,16 @@ export function useApi<T = any>(path: string | null, opts: { every?: number; max
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(() => Boolean(path) && !(path && cache.has(path)));
   const alive = useRef(true);
+  const retry = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const reload = useCallback(async () => {
     if (!path) return;
+    clearTimeout(retry.current);
     try {
       const v = await fetchCached<T>(path, opts.maxAge ?? 0);
       if (alive.current) { setData(v); setError(null); }
     } catch (e) {
-      if (alive.current) setError(describeError(e));
+      if (alive.current) { setError(describeError(e)); retry.current = setTimeout(() => void reload(), 6_000); }
     } finally {
       if (alive.current) setLoading(false);
     }
@@ -73,7 +78,7 @@ export function useApi<T = any>(path: string | null, opts: { every?: number; max
     listeners.set(path, set);
     void reload();
     const t = opts.every ? setInterval(() => { if (document.visibilityState === "visible") void reload(); }, opts.every) : undefined;
-    return () => { alive.current = false; set.delete(fn); if (t) clearInterval(t); };
+    return () => { alive.current = false; clearTimeout(retry.current); set.delete(fn); if (t) clearInterval(t); };
   }, [path, opts.every, reload]);
 
   return { data, error, loading, reload };

@@ -98,7 +98,6 @@ function Shell() {
       <Palette open={palette} onOpenChange={setPalette} onHelp={() => { setPalette(false); setHelp(true); }} />
       <Shortcuts open={help} onOpenChange={setHelp} />
       {params.get("player") && <Suspense fallback={null}><Inspector who={params.get("player")!} /></Suspense>}
-      {heist.lobby.error && !heist.lobby.data && <div className="sr-only" role="alert">{heist.lobby.error}</div>}
     </div>
   );
 }

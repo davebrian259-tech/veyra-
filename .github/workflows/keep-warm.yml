@@ -1,0 +1,12 @@
+name: keep-warm
+# Pings the API every 10 minutes so the free Render instance does not fall asleep.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: curl -fsS --retry 5 --retry-delay 10 --max-time 60 https://veyra-ccp.pages.dev/api/config -o /dev/null || true

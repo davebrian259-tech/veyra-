@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { motion } from "motion/react";
 import { ArrowRight01Icon, ArrowUpRight01Icon, BookOpen01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "../brand";
-import { ErrorNote, Skeleton } from "../ui";
+import { Skeleton } from "../ui";
 import { Activity } from "./Activity";
 import { ShieldToken, TONES, VaultEmblem } from "./art";
 import { FAUCET_URL } from "./errors";
@@ -26,7 +26,6 @@ export default function Lobby() {
     const t = setTimeout(() => { idle = (window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 1)))(() => void startTour("lobby")) as number; }, 1800);
     return () => { clearTimeout(t); window.cancelIdleCallback?.(idle); };
   }, [lobby.data]);
-  if (lobby.error && !lobby.data) return <ErrorNote message={lobby.error} retry={lobby.reload} />;
   if (!lobby.data) return <Skeleton lines={8} height={28} />;
   const { vaults, stats, ranked } = lobby.data;
   const nextId = [1, 2, 3, 4, 5].find((v) => !cracked.includes(v)) ?? 5;
@@ -79,7 +78,7 @@ export default function Lobby() {
       <aside className="stack-lg" aria-label="Your progress">
         <QuestPanel />
         <section className="panel">
-          <div className="panel-head"><h2>The shields</h2><span className="link">{stats.runs} heists · {stats.cracks} cracks · {stats.players} players</span></div>
+          <div className="panel-head"><h2>The shields</h2>{!(lobby.data as { snapshot?: boolean }).snapshot && <span className="link">{stats.runs} heists · {stats.cracks} cracks · {stats.players} players</span>}</div>
           <p className="small muted" style={{ marginBottom: "var(--s-3)" }}>Every vault shows which of Veyra's defences are on. A shield that is off is a way in. Tap one to see what it stops.</p>
           <div className="shield-grid">
             {shields.map((s) => <ShieldExplain key={s.id} s={s} />)}

@@ -1,3 +1,4 @@
+import snapshot from "../game/snapshot.json";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { MotionConfig, motion } from "motion/react";
@@ -52,7 +53,7 @@ export default function Landing() {
   useEffect(() => { if (user && (wantIn || params.get("next"))) navigate(next, { replace: true }); }, [user, wantIn, next, params, navigate]);
   useEffect(() => { document.title = "Veyra Heist · rob an AI agent on NEAR"; }, []);
 
-  const [heist, setHeist] = useState<Lobby | null>(null);
+  const [heist, setHeist] = useState<Lobby | null>(snapshot as unknown as Lobby);
   const [lastCrack, setLastCrack] = useState<Run | null>(null);
   useEffect(() => {
     api<Lobby>("/heist").then(setHeist).catch(() => undefined);

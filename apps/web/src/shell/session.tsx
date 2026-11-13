@@ -45,7 +45,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void (async () => {
       try {
-        const c = await api<Config>("/config");
+        let c: Config | null = null;
+        // keep trying quietly until the server answers; the page still renders meanwhile
+        for (let i = 0; !c; i++) c = await api<Config>("/config").catch(async () => { if (i === 0) setReady(true); await new Promise((r) => setTimeout(r, 5_000)); return null; });
         setConfig(c);
         setUser((await api("/auth/me").catch(() => null))?.user ?? null);
         if (c.mode === "live") {
@@ -54,8 +56,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           setWallet(w.connectedAccount());
           w.onAccountChange(setWallet);
         }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+      } catch {
+        // wallet set-up failures leave the page usable; sign-in reports its own errors
       } finally {
         setReady(true);
       }

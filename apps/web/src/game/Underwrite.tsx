@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "../brand";
 import { invalidate } from "../lib/data";
-import { Button, Empty, ErrorNote, Field, Skeleton } from "../ui";
+import { Button, Empty, Field, Skeleton } from "../ui";
 import { TONES, VaultEmblem } from "./art";
 import { FAUCET_URL } from "./errors";
 import { Explain } from "./explain";
@@ -47,7 +47,6 @@ export default function Underwrite() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backV, wdV, lobby.data, acct, h.account]);
 
-  if (lobby.error && !lobby.data) return <ErrorNote message={lobby.error} retry={lobby.reload} />;
   if (!lobby.data) return <Skeleton lines={8} height={28} />;
   const { vaults, ranked } = lobby.data;
   if (!ranked.enabled || !ranked.contractId) return <section className="panel"><Empty title="Backing is off on this server" action={<Link className="btn primary sm" to="/play">Play practice heists</Link>}>It needs the Heist pot contract. Practice heists still work.</Empty></section>;

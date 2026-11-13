@@ -19,7 +19,20 @@ export const onRequest = async (context: { request: Request; env: Env; params: {
   // the visitor's own address, so per-player limits are not shared by everyone behind this proxy
   const client = request.headers.get("cf-connecting-ip");
   if (client) { headers.set("x-veyra-client-ip", client); headers.set("x-forwarded-for", client); }
-  const res = await fetch(target, { method: request.method, headers, body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body, redirect: "manual" });
+  const read = request.method === "GET" || request.method === "HEAD";
+  // A free Render instance answers 502/503 while it boots; ride that out here for reads.
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < (read ? 6 : 1); attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, Math.min(1000 * 2 ** (attempt - 1), 6000)));
+    try {
+      res = await fetch(target, { method: request.method, headers, body: read ? undefined : request.body, redirect: "manual" });
+    } catch {
+      res = null;
+      continue;
+    }
+    if (!read || ![502, 503, 504].includes(res.status)) break;
+  }
+  if (!res) return new Response(JSON.stringify({ error: "waking", message: "Veyra is waking up." }), { status: 503, headers: { "content-type": "application/json", "retry-after": "5" } });
   const out = new Headers(res.headers);
   out.delete("content-encoding");
   out.delete("content-length");
